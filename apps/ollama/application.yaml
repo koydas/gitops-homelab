@@ -28,6 +28,7 @@ spec:
             pull:
               - "llama3.1:8b-instruct-q4_0"
               - "qwen2.5:0.5b"
+              - "qwen2.5-coder:7b-instruct-q4_0"
             run: []
   destination:
     server: https://kubernetes.default.svc
