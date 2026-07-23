@@ -1,5 +1,7 @@
 # gitops-homelab
 
+[![validate](https://github.com/koydas/gitops-homelab/actions/workflows/validate.yml/badge.svg)](https://github.com/koydas/gitops-homelab/actions/workflows/validate.yml)
+
 GitOps repo synced by ArgoCD running on a single-node bare-metal microk8s cluster.
 
 ## Host state (not tracked by Git — lives only on the box)
