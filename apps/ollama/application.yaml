@@ -27,6 +27,7 @@ spec:
             # Edit this list and commit to bump/add the served model version.
             pull:
               - "llama3.1:8b-instruct-q4_0"
+              - "qwen2.5:0.5b"
             run: []
   destination:
     server: https://kubernetes.default.svc
