@@ -1,0 +1,157 @@
+{
+  "info": {
+    "name": "Ollama - Homelab (microk8s)",
+    "description": "Basic smoke-test requests against the Ollama API exposed via MetalLB at {{base_url}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://192.168.1.241:11434",
+      "type": "string"
+    },
+    {
+      "key": "model",
+      "value": "llama3.1:8b-instruct-q4_0",
+      "type": "string"
+    },
+    {
+      "key": "small_model",
+      "value": "qwen2.5:0.5b",
+      "type": "string"
+    },
+    {
+      "key": "code_model",
+      "value": "qwen2.5-coder:7b-instruct-q4_0",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health check (root)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""] }
+      },
+      "response": []
+    },
+    {
+      "name": "Version",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/version", "host": ["{{base_url}}"], "path": ["api", "version"] }
+      },
+      "response": []
+    },
+    {
+      "name": "List local models (/api/tags)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/tags", "host": ["{{base_url}}"], "path": ["api", "tags"] }
+      },
+      "response": []
+    },
+    {
+      "name": "List running/loaded models (/api/ps)",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{base_url}}/api/ps", "host": ["{{base_url}}"], "path": ["api", "ps"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Show model details (/api/show)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{model}}\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/show", "host": ["{{base_url}}"], "path": ["api", "show"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate - non-streaming",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"Say hello in one sentence.\",\n  \"stream\": false\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/generate", "host": ["{{base_url}}"], "path": ["api", "generate"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Generate - streaming",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{small_model}}\",\n  \"prompt\": \"Count from 1 to 5.\",\n  \"stream\": true\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/generate", "host": ["{{base_url}}"], "path": ["api", "generate"] },
+        "description": "Response is newline-delimited JSON chunks. In Postman, view the raw response body — the console shows each chunk as it streams in."
+      },
+      "response": []
+    },
+    {
+      "name": "Generate - code prompt",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{code_model}}\",\n  \"prompt\": \"Write a Python function that returns the nth Fibonacci number using memoization. Just the code, no explanation.\",\n  \"stream\": false\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/generate", "host": ["{{base_url}}"], "path": ["api", "generate"] },
+        "description": "Uses the coder-specialized model. Verified live: ~28 tokens/s on the GTX 1060, correct memoized Fibonacci implementation returned."
+      },
+      "response": []
+    },
+    {
+      "name": "Chat - single turn",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{small_model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"What model are you?\" }\n  ],\n  \"stream\": false\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/chat", "host": ["{{base_url}}"], "path": ["api", "chat"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Chat - multi-turn (history)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{small_model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"My name is Sam.\" },\n    { \"role\": \"assistant\", \"content\": \"Nice to meet you, Sam!\" },\n    { \"role\": \"user\", \"content\": \"What's my name?\" }\n  ],\n  \"stream\": false\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/chat", "host": ["{{base_url}}"], "path": ["api", "chat"] }
+      },
+      "response": []
+    },
+    {
+      "name": "Embeddings",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"{{small_model}}\",\n  \"input\": \"GitOps is nice.\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/api/embed", "host": ["{{base_url}}"], "path": ["api", "embed"] },
+        "description": "As deployed, this server returns `{\"error\":\"This server does not support embeddings. Start it with --embeddings\"}` — the ollama-helm chart doesn't pass that flag by default. Keeping this request as a documented 'expected failure' check; to actually enable embeddings, add `--embeddings` to the container args via the Helm values (e.g. `extraArgs`) and redeploy."
+      },
+      "response": []
+    }
+  ]
+}
