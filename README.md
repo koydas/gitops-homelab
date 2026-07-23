@@ -4,6 +4,13 @@
 
 GitOps repo synced by ArgoCD running on a single-node bare-metal microk8s cluster.
 
+## Documentation
+
+- [docs/architecture.md](./docs/architecture.md) — components, data flow, what lives where
+- [docs/runbook.md](./docs/runbook.md) — operational tasks and troubleshooting (real incidents, not hypothetical)
+- [docs/testing.md](./docs/testing.md) — verification checklist and the Postman collection
+- [docs/adr/](./docs/adr/README.md) — Architecture Decision Records: what was decided, alternatives considered, why
+
 ## Host state (not tracked by Git — lives only on the box)
 
 - microk8s channel: `1.35/stable` (v1.35.6)
@@ -45,6 +52,7 @@ Applying `bootstrap/root-app.yaml` creates the `root` Application (app-of-apps),
 - `apps/ollama/application.yaml` — Ollama deployment (Helm chart `otwld/ollama-helm`), project `homelab`. The served model is set in `spec.source.helm.valuesObject.ollama.models.pull` — edit and commit to bump the model version.
 - `apps/metallb-config/` — `IPAddressPool` + `L2Advertisement`, Git-managed (the `metallb` addon still installs the MetalLB controller itself; these manifests take over ownership of the address pool it creates so the LAN IP range is changeable via a Git commit instead of only via `microk8s enable metallb:<range>` on the host). Names match the addon's originally-created objects so ArgoCD adopts them in place.
 - `postman/ollama.postman_collection.json` — Postman collection for smoke-testing the Ollama API (`/api/tags`, `/api/generate`, `/api/chat`, `/api/embed`, a code-generation prompt against the coder model). Not synced by ArgoCD, just kept alongside the infra it tests. Import into Postman and set `base_url` to the Ollama Service's MetalLB IP if it ever changes.
+- `docs/` — architecture, runbook, testing checklist, and ADRs. See [Documentation](#documentation) above.
 
 ## CI
 
