@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: homelab
+  namespace: argocd
+  annotations:
+    # Applied before other apps/ manifests so Applications can reference
+    # this project on the same sync as their creation.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Workload applications for the homelab (Ollama, future services)
+  sourceRepos:
+    - https://github.com/koydas/gitops-homelab.git
+    - https://helm.otwld.com/
+  destinations:
+    - namespace: ollama
+      server: https://kubernetes.default.svc
+    # Add a line here for each new namespace as new workload apps are added.
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
