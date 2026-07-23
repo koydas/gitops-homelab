@@ -14,3 +14,4 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0008: MetalLB IP pool adopted into Git management](./0008-metallb-config-in-git.md)
 - [ADR-0009: CI validates manifests statically, does not deploy to a test cluster](./0009-static-ci-validation.md)
 - [ADR-0010: Full passwordless sudo granted to the assistant session](./0010-assistant-sudo-access.md)
+- [ADR-0011: Ollama models pinned to Q4_0 quantization, not Q5_K_M](./0011-ollama-q4-quantization.md)
