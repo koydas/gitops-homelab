@@ -34,6 +34,11 @@ curl -s http://192.168.1.241:11434/api/generate -d '{"model":"qwen2.5:0.5b","pro
 watch -n1 nvidia-smi   # VRAM usage and GPU-Util%% should spike during the request
 ```
 
+**A request feels stuck/slow:** expected if other requests are queued ahead of it — see [ADR-0013](./adr/0013-ollama-sequential-requests.md). Ollama serves one generation at a time on this GPU by design (no `OLLAMA_NUM_PARALLEL`); N simultaneous requests finish roughly N × (single-request time) apart, not all at once. Check for queued requests:
+```bash
+sudo microk8s kubectl -n ollama logs deploy/ollama --since=5m | grep -E "\[GIN\].*POST|slot launch_slot_"
+```
+
 **Rotate the ArgoCD admin password:** log into the UI (`https://192.168.1.240`) → user icon (top right) → *Update Password*. The initial auto-generated password is only ever shown once, via:
 ```bash
 sudo microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d

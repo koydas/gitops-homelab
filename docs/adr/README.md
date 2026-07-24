@@ -16,3 +16,4 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0010: Full sudo access granted to the assistant session](./0010-assistant-sudo-access.md)
 - [ADR-0011: Ollama models pinned to Q4_0 quantization, not Q5_K_M](./0011-ollama-q4-quantization.md)
 - [ADR-0012: kube-prometheus-stack (full) for GPU monitoring, LoadBalancer-exposed, 15-day retention](./0012-monitoring-stack.md)
+- [ADR-0013: Ollama serves requests sequentially, no `OLLAMA_NUM_PARALLEL`](./0013-ollama-sequential-requests.md)
