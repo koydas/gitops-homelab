@@ -39,10 +39,16 @@ watch -n1 nvidia-smi   # VRAM usage and GPU-Util%% should spike during the reque
 sudo microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-**Access Grafana / retrieve its admin password:** Grafana is exposed at `http://192.168.1.242` (MetalLB, `monitoring` Application — see [ADR-0012](./adr/0012-monitoring-stack.md)). Username is `admin`; the password is auto-generated on first install and only ever retrievable via:
+**Access Grafana / retrieve its admin password:** Grafana is exposed at `http://192.168.1.242` (MetalLB, `monitoring` Application — see [ADR-0012](./adr/0012-monitoring-stack.md)). Username is `admin`; the password lives in a Secret created once out-of-band (**not** the chart's own auto-generated one — that one drifts under ArgoCD, see below):
 ```bash
-sudo microk8s kubectl -n monitoring get secret -l app.kubernetes.io/name=grafana \
-  -o jsonpath="{.items[0].data.admin-password}" | base64 -d
+sudo microk8s kubectl -n monitoring get secret grafana-admin-credentials \
+  -o jsonpath="{.data.admin-password}" | base64 -d
+```
+If that secret doesn't exist yet (fresh install), create it before/alongside the first sync — the Application's `grafana.admin.existingSecret` value expects it to already be there:
+```bash
+sudo microk8s kubectl -n monitoring create secret generic grafana-admin-credentials \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password="$(python3 -c 'import secrets; print(secrets.token_urlsafe(30))')"
 ```
 
 **Check that Prometheus is actually scraping the GPU exporter:**
@@ -92,8 +98,8 @@ sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
 **Fix:** manually `kubectl apply -f apps/appproject.yaml` and `apps/monitoring/application.yaml` once, out-of-band, the same way `bootstrap/root-app.yaml` itself is documented as "applied manually, once" (see [architecture.md](./architecture.md)). Once the `monitoring` Application exists and its CRDs are installed, the root Application's own sync (retried automatically via `selfHeal`) succeeds on its own from then on.
 
 ### Grafana admin login stops working with a previously-valid password
-**Cause:** without `grafana.persistence`, Grafana's SQLite user DB lived on the pod's ephemeral filesystem and got rebuilt from whatever the auto-generated admin-password `Secret` held *at pod-boot time*. That Secret's value isn't always stable across ArgoCD syncs (its `lookup()`-based reuse doesn't reliably hold — the same underlying quirk as the cosmetic `OutOfSync` status above), so any pod restart between two syncs with different secret values silently locked the running pod's actual login password out of sync with whatever `kubectl get secret ... admin-password` reports afterward.
-**Fix:** `grafana.persistence` enabled (`apps/monitoring/application.yaml`, 1Gi on `microk8s-hostpath`, switches the Grafana workload from a Deployment to a StatefulSet). The admin password (and any dashboards/settings changed in the UI) now survives pod restarts on its own, independent of the Secret's value.
+**Cause:** the chart's auto-generated admin-password `Secret` is not stable under ArgoCD — its `lookup()`-based "reuse the existing password" logic doesn't reliably hold (confirmed in practice: the templated password value changed across syncs with no config change on our end), matching the cosmetic `OutOfSync` status also seen on this Application. Enabling `grafana.persistence` alone wasn't enough: it stopped the SQLite user DB from being *wiped* on restart, but the DB still only picks up a *new* password value on whichever boot happens to land after the Secret drifted, so `kubectl get secret ... admin-password` could still report a value that didn't match what the running pod actually accepted.
+**Fix:** stopped letting the chart template a password at all. Created a Secret once out-of-band (`grafana-admin-credentials`, see Common Tasks above) and pointed `grafana.admin.existingSecret` at it (`apps/monitoring/application.yaml`). With `existingSecret` set, the chart never computes/templates a password value — it just mounts env vars from that Secret — so there's nothing left for ArgoCD to drift.
 
 ### Grafana shows "failed to load dashboard" for the GPU dashboard
 **Cause:** the embedded dashboard (Grafana.com ID 12239) is from 2020 (`schemaVersion: 22`) and uses the legacy Angular-based `graph` panel type. Grafana 13.1.1 (bundled by this chart) has dropped Angular support entirely, so those panels can't render — the API still serves the dashboard JSON fine (`GET /api/dashboards/uid/<uid>` returns 200), the failure is purely in the frontend trying to render an unsupported panel type.

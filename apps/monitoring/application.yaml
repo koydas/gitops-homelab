@@ -94,7 +94,7 @@ spec:
             type: LoadBalancer
           # Without this, Grafana's SQLite user DB (including the admin password's
           # actual hash) lives on the pod's ephemeral filesystem and gets rebuilt from
-          # whatever the auto-generated Secret holds at boot time -- which drifts across
+          # whatever the current admin secret holds at boot time -- which drifts across
           # syncs (see runbook.md), locking users out after any pod restart.
           persistence:
             enabled: true
@@ -102,6 +102,16 @@ spec:
             storageClassName: microk8s-hostpath
             accessModes: ["ReadWriteOnce"]
             size: 1Gi
+          # The chart's own auto-generated Secret is not stable under ArgoCD: its
+          # `lookup()`-based reuse doesn't reliably hold, so the templated password
+          # value drifts on repeated syncs even with persistence enabled. Point at a
+          # Secret created once out-of-band instead (`kubectl create secret generic
+          # grafana-admin-credentials ...`, not in Git -- see runbook.md), so the chart
+          # never tries to compute/template a password value at all.
+          admin:
+            existingSecret: grafana-admin-credentials
+            userKey: admin-user
+            passwordKey: admin-password
           resources:
             requests:
               cpu: 100m
