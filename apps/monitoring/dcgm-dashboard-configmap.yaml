@@ -34,46 +34,30 @@ data:
       "links": [],
       "panels": [
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 18,
             "x": 0,
             "y": 0
           },
-          "hiddenSeries": false,
           "id": 12,
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_GPU_TEMP",
@@ -83,45 +67,23 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Temperature",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "celsius",
-              "label": null,
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
@@ -186,47 +148,30 @@ data:
           "type": "gauge"
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 18,
             "x": 0,
             "y": 8
           },
-          "hiddenSeries": false,
           "id": 10,
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pluginVersion": "6.5.2",
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_POWER_USAGE",
@@ -235,45 +180,22 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Power Usage",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "watt",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "min": 0.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
@@ -358,48 +280,31 @@ data:
           "type": "gauge"
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 0,
             "y": 16
           },
-          "hiddenSeries": false,
           "id": 2,
           "interval": "",
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "sideWidth": null,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_SM_CLOCK",
@@ -410,89 +315,50 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU SM Clocks",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "decimals": null,
-              "format": "hertz",
-              "label": "",
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "hertz",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 12,
             "y": 16
           },
-          "hiddenSeries": false,
           "id": 4,
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_MEM_CLOCK",
@@ -501,88 +367,50 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Memory Clocks",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "hertz",
-              "label": null,
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "hertz",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 0,
             "y": 24
           },
-          "hiddenSeries": false,
           "id": 6,
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_GPU_UTIL",
@@ -591,88 +419,50 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Utilization",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "percent",
-              "label": null,
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 12,
             "y": 24
           },
-          "hiddenSeries": false,
           "id": 8,
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": true,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_MEM_COPY_UTIL",
@@ -681,87 +471,49 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Mem Cpy Utilization",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "cumulative"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "percent",
-              "label": null,
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 0,
             "y": 32
           },
-          "hiddenSeries": false,
           "id": 18,
-          "legend": {
-            "avg": true,
-            "current": false,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "list",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_FB_USED",
@@ -770,88 +522,49 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Framebuffer Mem Used",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "decbytes",
-              "label": null,
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decbytes",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "Prometheus",
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 12,
             "y": 32
           },
-          "hiddenSeries": false,
           "id": 20,
-          "legend": {
-            "alignAsTable": true,
-            "avg": true,
-            "current": false,
-            "max": true,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 2,
-          "nullPointMode": "null",
           "options": {
-            "dataLinks": []
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "mean",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            }
           },
-          "percentage": false,
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
           "targets": [
             {
               "expr": "DCGM_FI_DEV_FB_FREE",
@@ -860,50 +573,28 @@ data:
               "refId": "A"
             }
           ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
           "title": "GPU Framebuffer Mem Free",
-          "tooltip": {
-            "shared": true,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "decbytes",
-              "label": null,
-              "logBase": 1,
-              "max": "100",
-              "min": "0",
-              "show": true
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decbytes",
+              "min": 0.0,
+              "max": 100.0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "pointSize": 5,
+                "spanNulls": false,
+                "showPoints": "never"
+              }
             },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
+            "overrides": []
           }
         }
       ],
       "refresh": false,
-      "schemaVersion": 22,
+      "schemaVersion": 39,
       "style": "dark",
       "tags": [],
       "templating": {

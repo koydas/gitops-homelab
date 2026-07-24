@@ -50,6 +50,7 @@ Confirmed (chart's `_helpers.tpl`) that when `adminPassword` and `admin.existing
 - Same ArgoCD app-of-apps + AppProject pattern as Ollama — no new deployment mechanism to learn.
 - Grafana dashboard is provisioned from Git (ConfigMap), not a manual "Import dashboard 12239" click that wouldn't survive a fresh install.
 - Corrected an upstream bug while embedding the dashboard: dashboard 12239's "GPU Framebuffer Mem Free" panel queried `DCGM_FI_DEV_FB_USED` (same metric as the "Mem Used" panel) instead of `DCGM_FI_DEV_FB_FREE` — fixed in the embedded copy.
+- Also migrated dashboard 12239 (`schemaVersion: 22`, dated 2020) off the legacy Angular-based `graph`/`yaxes` panel type to `timeseries`/`fieldConfig` — Grafana 13.1.1 (this chart's bundled version) no longer renders the old panel type at all, so the dashboard failed to load until this was done. See [runbook.md](./runbook.md).
 
 **Neutral:**
 - The chart requires cluster-scoped resources (CRDs, ClusterRoles/Bindings, admission webhook configs) that the `homelab` AppProject previously blocked outright (`clusterResourceWhitelist: []`); the whitelist was extended to the specific kinds this chart needs (see `apps/appproject.yaml`), rather than opened up generally.
