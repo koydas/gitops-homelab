@@ -11,6 +11,14 @@ spec:
     targetRevision: 87.19.1
     helm:
       valuesObject:
+        # The chart's largest CRDs (prometheuses, alertmanagers, etc.) exceed the
+        # 262144-byte last-applied-configuration annotation limit, and ArgoCD does not
+        # honor the Application-level ServerSideApply=true syncOption for a chart's own
+        # crds/ directory -- every auto-sync re-attempts a plain patch and fails. Those
+        # CRDs were installed once out-of-band (`kubectl apply --server-side
+        # --force-conflicts`, see runbook.md) and are left alone from here on.
+        crds:
+          enabled: false
         prometheus:
           prometheusSpec:
             retention: 15d
