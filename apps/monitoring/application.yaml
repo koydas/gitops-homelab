@@ -112,13 +112,23 @@ spec:
             existingSecret: grafana-admin-credentials
             userKey: admin-user
             passwordKey: admin-password
+          # Grafana 13.1.1 (bundled by this chart) auto-preinstalls 3 "app" plugins at
+          # startup (Loki Explore, Pyroscope, Traces) that this repo has no matching
+          # datasource for -- pure wasted memory/bandwidth. Disabled to cut the baseline
+          # footprint instead of just raising the limit to cover them.
+          env:
+            GF_PLUGIN_PREINSTALL_DISABLED: "true"
+          # 256Mi was sized off older/lighter Grafana defaults and got OOMKilled in
+          # practice: confirmed via dmesg the container was already sitting at ~250Mi at
+          # steady state (before any interactive dashboard use), so any real usage pushed
+          # it over. See runbook.md.
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 200m
-              memory: 256Mi
+              memory: 512Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
