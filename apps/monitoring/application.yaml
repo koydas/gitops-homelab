@@ -100,3 +100,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # kube-prometheus-stack's largest CRDs (Prometheus, Alertmanager, ThanosRuler, ...)
+      # exceed the 262144-byte last-applied-configuration annotation limit under a plain
+      # apply -- the same class of issue already hit installing ArgoCD itself (see runbook.md).
+      - ServerSideApply=true

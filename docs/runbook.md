@@ -82,6 +82,14 @@ sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
 **Cause:** the old pod had just been terminated (ArgoCD sync rolling out a new one) and the new pod hadn't yet become `Ready`, so the Service had zero healthy endpoints for a brief window.
 **Fix:** none needed — wait for the new pod to reach `Running`/`Ready` (`kubectl -n ollama get pods -w`).
 
+### `monitoring` Application stuck `SyncFailed` on several CRDs: `metadata.annotations: Too long`
+**Cause:** same class of issue as the ArgoCD-install-itself incident above — `kube-prometheus-stack`'s largest CRDs (`prometheuses`, `alertmanagers`, `alertmanagerconfigs`, `prometheusagents`, `thanosrulers`, `scrapeconfigs`) have OpenAPI schemas large enough that a plain `kubectl apply`'s `last-applied-configuration` annotation exceeds the 262144-byte Kubernetes limit. Smaller CRDs (`servicemonitors`, `podmonitors`, `probes`, `prometheusrules`) synced fine; only the large ones failed, which made the symptom look partial/confusing at first.
+**Fix:** add `ServerSideApply=true` to the Application's `syncPolicy.syncOptions` (already in `apps/monitoring/application.yaml`) — server-side apply doesn't write that annotation at all.
+
+### `monitoring` Application's root-driven bootstrap: `AppProject`/`Application` changes never applied, sync stuck retrying forever
+**Cause:** the root Application's directory-recurse sync validates every manifest under `apps/` as a single all-or-nothing batch before applying any of it. The `ServiceMonitor` manifest (`apps/monitoring/dcgm-servicemonitor.yaml`) references a CRD that only the `monitoring` Application itself installs — but that Application's own creation was *also* stuck in the same failing root batch, so nothing could ever converge on its own (a genuine bootstrap cycle, not a transient race).
+**Fix:** manually `kubectl apply -f apps/appproject.yaml` and `apps/monitoring/application.yaml` once, out-of-band, the same way `bootstrap/root-app.yaml` itself is documented as "applied manually, once" (see [architecture.md](./architecture.md)). Once the `monitoring` Application exists and its CRDs are installed, the root Application's own sync (retried automatically via `selfHeal`) succeeds on its own from then on.
+
 ### `/api/embed` returns `"This server does not support embeddings. Start it with --embeddings"`
 **Cause:** the `otwld/ollama-helm` chart does not pass the `--embeddings` flag by default; not something CI or `kubeconform` can catch since the manifest is schema-valid.
 **Fix:** not yet applied. To enable, add `--embeddings` to the container args via the Helm values (e.g. an `extraArgs` field, chart-version-dependent) and let ArgoCD redeploy.
