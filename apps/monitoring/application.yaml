@@ -92,6 +92,16 @@ spec:
         grafana:
           service:
             type: LoadBalancer
+          # Without this, Grafana's SQLite user DB (including the admin password's
+          # actual hash) lives on the pod's ephemeral filesystem and gets rebuilt from
+          # whatever the auto-generated Secret holds at boot time -- which drifts across
+          # syncs (see runbook.md), locking users out after any pod restart.
+          persistence:
+            enabled: true
+            type: sts
+            storageClassName: microk8s-hostpath
+            accessModes: ["ReadWriteOnce"]
+            size: 1Gi
           resources:
             requests:
               cpu: 100m

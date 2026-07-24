@@ -41,6 +41,8 @@ The chart's own `values.yaml` (checked directly from the downloaded chart tarbal
 
 Confirmed (chart's `_helpers.tpl`) that when `adminPassword` and `admin.existingSecret` are both left unset, the chart auto-generates a random 40-character password on first install and reuses it (via a `lookup`) on subsequent syncs, rather than a fixed default. Left unset — same "generated Secret, not in Git" pattern as the ArgoCD admin password.
 
+In practice, that `lookup`-based reuse did not reliably hold across every ArgoCD sync — the generated password value changed at least once. Without persistent storage, Grafana's SQLite user DB (which holds the actual password hash) lived on the pod's ephemeral filesystem and got rebuilt from the Secret's value at each pod boot, so a restart landing between two syncs with different secret values locked users out. `grafana.persistence` (1Gi, `microk8s-hostpath`) was added after this was hit in practice — see [runbook.md](./runbook.md) — so the admin password now survives pod restarts independent of the Secret.
+
 ---
 
 ## Consequences
