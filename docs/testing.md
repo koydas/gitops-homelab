@@ -37,3 +37,24 @@ Used when standing this up from scratch (`bootstrap/install-host.sh` + `bootstra
 9. **The core GitOps property** ([ADR-0001](./adr/0001-kubernetes-gitops-over-docker.md)): edit `models.pull`, commit, push, force a refresh, confirm the new model is pulled and servable — with no manual cluster command beyond the Git push and the refresh annotation
 
 All nine were run live against this deployment and passed; incidents encountered along the way are in [runbook.md](./runbook.md).
+
+## Monitoring stack checklist (Prometheus/Grafana)
+
+See [ADR-0012](./adr/0012-monitoring-stack.md) for context; incidents hit standing this up are in [runbook.md](./runbook.md).
+
+1. `sudo microk8s kubectl -n monitoring get pods,pvc` — all `Running`/`Bound`, including `prometheus-monitoring-kube-prometheus-prometheus-0` and `monitoring-grafana-0` (a StatefulSet pod, not a Deployment — see ADR-0012 on why)
+2. `monitoring` Application `Healthy` in ArgoCD (its `OutOfSync` status is a known cosmetic quirk, not a real problem — see runbook.md)
+3. Prometheus target health — `nvidia-dcgm-exporter` should show `up`:
+   ```bash
+   sudo microk8s kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090 &
+   curl -s http://localhost:9090/api/v1/query?query=DCGM_FI_DEV_GPU_TEMP | jq
+   ```
+   Should return a real value (compare against `nvidia-smi` on the host).
+4. Grafana reachable and the GPU dashboard actually renders (not just "the API returns 200" — this repo already hit a dashboard that loaded fine via the API but failed to render in the browser due to a legacy panel type, see runbook.md):
+   ```bash
+   GRAFANA_PW=$(sudo microk8s kubectl -n monitoring get secret grafana-admin-credentials -o jsonpath="{.data.admin-password}" | base64 -d)
+   curl -s -u "admin:${GRAFANA_PW}" http://192.168.1.242/api/dashboards/uid/Oxed_c6Wz -o /dev/null -w "%{http_code}\n"
+   ```
+   Then actually open `http://192.168.1.242` in a browser and confirm the panels show data, not an error banner.
+5. Password durability: delete the Grafana pod, wait for it to come back, confirm the *same* password from step 4 still works (proves the fix in ADR-0012 holds, not just that persistence exists).
+6. Metrics durability: delete the Prometheus pod, wait for it to come back, confirm a query for data from before the restart still returns results (proves the PVC/retention setup actually works, not just that it's configured).
