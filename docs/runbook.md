@@ -39,6 +39,20 @@ watch -n1 nvidia-smi   # VRAM usage and GPU-Util%% should spike during the reque
 sudo microk8s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
+**Access Grafana / retrieve its admin password:** Grafana is exposed at `http://192.168.1.242` (MetalLB, `monitoring` Application — see [ADR-0012](./adr/0012-monitoring-stack.md)). Username is `admin`; the password is auto-generated on first install and only ever retrievable via:
+```bash
+sudo microk8s kubectl -n monitoring get secret -l app.kubernetes.io/name=grafana \
+  -o jsonpath="{.items[0].data.admin-password}" | base64 -d
+```
+
+**Check that Prometheus is actually scraping the GPU exporter:**
+```bash
+sudo microk8s kubectl -n monitoring get servicemonitor nvidia-dcgm-exporter
+# In the Prometheus UI (port-forward or via Grafana's Explore), Status > Targets should show
+# nvidia-dcgm-exporter/0 as "UP":
+sudo microk8s kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090
+```
+
 **Prune stale model tags** (the Helm chart's `models.clean` is left `false` — see [ADR-0004](./adr/0004-ollama-helm-deployment.md) — so removing a tag from `models.pull` does not delete it from the PVC):
 ```bash
 sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
@@ -83,3 +97,4 @@ sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
 | GitHub push doesn't seem to deploy for several minutes | Expected — no webhook is possible on a LAN-only cluster ([ADR-0002](./adr/0002-lan-only-exposure.md)); ArgoCD polls every ~3 min. Force a refresh (see Common Tasks) for immediate feedback. |
 | CI (`validate.yml`) is green but the app fails to sync/run anyway | Expected class of gap — CI only validates schema/syntax, not runtime semantics like Helm value correctness or registry tag existence ([ADR-0009](./adr/0009-static-ci-validation.md)) |
 | 40Gi PVC filling up | Stale model tags not auto-pruned (`models.clean: false`) — see Common Tasks above to remove them manually |
+| A `monitoring` namespace pod is `Pending` or gets `OOMKilled`, especially while a larger Ollama model is loaded | Node only has 15Gi RAM total, shared between Ollama and the monitoring stack's fixed resource requests/limits ([ADR-0012](./adr/0012-monitoring-stack.md)) — check `free -h` on the host and `sudo microk8s kubectl top pods -A` before assuming a config bug |
