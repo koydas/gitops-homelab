@@ -68,6 +68,19 @@ spec:
             limits:
               cpu: 50m
               memory: 64Mi
+        # These monitor kubeadm-style static control-plane pods (via new Services created
+        # in kube-system) that microk8s doesn't expose the same way; out of scope for the
+        # GPU-monitoring goal here, and would otherwise need kube-system write access.
+        kubeControllerManager:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        coreDns:
+          enabled: false
         grafana:
           service:
             type: LoadBalancer
