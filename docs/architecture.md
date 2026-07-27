@@ -17,6 +17,7 @@ flowchart TB
             proj["homelab AppProject"]
             ollama["ollama Application\n(namespace: ollama)"]
             mon["monitoring Application\n(kube-prometheus-stack,\nnamespace: monitoring)"]
+            ing["ingress-nginx Application\n(namespace: ingress-nginx)"]
             dcgm["nvidia-dcgm-exporter\n(namespace: gpu-operator-resources)"]
             mlb["metallb-config\n(IPAddressPool, L2Advertisement)"]
             pvc["PVC: ollama\n(40Gi, microk8s-hostpath)"]
@@ -33,6 +34,7 @@ flowchart TB
     root --> proj
     root --> ollama
     root --> mon
+    root --> ing
     root --> mlb
     ollama -- "GPU passthrough" --> gpu
     ollama -- "model storage" --> pvc
@@ -43,6 +45,7 @@ flowchart TB
     metallb -- "192.168.1.240" --> argocd
     metallb -- "192.168.1.241:11434" --> ollama
     metallb -- "192.168.1.242" --> mon
+    metallb -- "192.168.1.243 (by hostname)" --> ing
     user -- "https" --> metallb
     user -- "HTTP API" --> metallb
     user -- "Grafana UI" --> metallb
@@ -55,7 +58,7 @@ flowchart TB
 | Host OS, NVIDIA driver | Manual (imperative, pre-existing) | Not managed by this repo; assumed present before `bootstrap/install-host.sh` runs |
 | microk8s + addons (dns, hostpath-storage, metallb, gpu) + ArgoCD install | `bootstrap/install-host.sh` | Idempotent script, source of truth for host-layer commands |
 | ArgoCD `root` Application | `bootstrap/root-app.yaml`, applied once manually | Bootstraps everything below it |
-| Workload apps (Ollama, monitoring), AppProject, MetalLB IP pool | `apps/**` in this repo | Fully Git-managed; ArgoCD syncs automatically |
+| Workload apps (Ollama, monitoring, ingress-nginx), AppProject, MetalLB IP pool | `apps/**` in this repo | Fully Git-managed; ArgoCD syncs automatically |
 | Ollama model weights | PVC on host disk (`microk8s-hostpath`) | **Not** in Git — re-downloaded on a fresh PVC (see [runbook.md](./runbook.md)) |
 | Prometheus metrics (GPU history, etc.) | PVC on host disk (`microk8s-hostpath`, 15d retention) | **Not** in Git — lost if the PVC is deleted; see [ADR-0012](./adr/0012-monitoring-stack.md) |
 | ArgoCD admin password | Kubernetes Secret, regenerated per install | Not in Git; rotate after first login |
@@ -74,6 +77,13 @@ flowchart TB
 2. A `ServiceMonitor` (`apps/monitoring/dcgm-servicemonitor.yaml`) tells Prometheus (deployed by the `monitoring` Application's kube-prometheus-stack chart) to scrape it every 30s, across namespaces.
 3. Prometheus stores samples on its PVC (`microk8s-hostpath`, 15 day retention — see [ADR-0012](./adr/0012-monitoring-stack.md)).
 4. Grafana, provisioned with a Prometheus datasource by the chart and a GPU dashboard (`apps/monitoring/dcgm-dashboard-configmap.yaml`, labeled `grafana_dashboard: "1"` so the chart's sidecar auto-loads it), is reachable at its own MetalLB IP (`192.168.1.242:80`, see [runbook.md](./runbook.md) for login).
+
+## Ingress flow (host-routed apps)
+
+1. `ingress-nginx` (`apps/ingress-nginx/application.yaml`) is the one `IngressClass` for the cluster (`ingressClassResource.default: true`), reachable at a pinned MetalLB IP (`192.168.1.243`, see [ADR-0014](./adr/0014-ingress-nginx-controller.md)).
+2. A future HTTP app adds its own `Ingress` object (in its own `apps/<name>/` app) naming a hostname; no client-facing MetalLB IP of its own is needed.
+3. The operator's device resolves that hostname to `.243` (`/etc/hosts` entry or LAN DNS — no DNS server exists in this environment yet), and ingress-nginx routes by `Host` header to the right Service.
+4. Still LAN-only: no public domain, no cert-manager/TLS — see [ADR-0002](./adr/0002-lan-only-exposure.md), amended by ADR-0014 only for the internal routing model, not the exposure boundary.
 
 ## GitOps sync flow (changing what's deployed)
 
