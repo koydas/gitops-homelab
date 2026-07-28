@@ -18,3 +18,4 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0012: kube-prometheus-stack (full) for GPU monitoring, LoadBalancer-exposed, 15-day retention](./0012-monitoring-stack.md)
 - [ADR-0013: Ollama serves requests sequentially, no `OLLAMA_NUM_PARALLEL`](./0013-ollama-sequential-requests.md)
 - [ADR-0014: Add ingress-nginx as a host-routed entry point, still LAN-only](./0014-ingress-nginx-controller.md)
+- [ADR-0015: Onboard `ollama-chat` as a Git-source Application, not a Helm chart](./0015-ollama-chat-git-source-application.md)

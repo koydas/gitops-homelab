@@ -11,6 +11,7 @@ spec:
   description: Workload applications for the homelab (Ollama, monitoring, ingress-nginx, future services)
   sourceRepos:
     - https://github.com/koydas/gitops-homelab.git
+    - https://github.com/koydas/ollama-chat.git
     - https://helm.otwld.com/
     - https://prometheus-community.github.io/helm-charts
     - https://kubernetes.github.io/ingress-nginx
@@ -20,6 +21,8 @@ spec:
     - namespace: monitoring
       server: https://kubernetes.default.svc
     - namespace: ingress-nginx
+      server: https://kubernetes.default.svc
+    - namespace: ollama-chat
       server: https://kubernetes.default.svc
     # Add a line here for each new namespace as new workload apps are added.
   clusterResourceWhitelist:

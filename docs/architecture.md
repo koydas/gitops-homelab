@@ -8,6 +8,7 @@ Single-node bare-metal server running microk8s, GitOps-managed by ArgoCD, hostin
 flowchart TB
     subgraph gh["GitHub"]
         repo["koydas/gitops-homelab (public)"]
+        chatrepo["koydas/ollama-chat (public)"]
     end
 
     subgraph host["Bare-metal host (Ubuntu 26.04, GTX 1060 6GB)"]
@@ -18,10 +19,12 @@ flowchart TB
             ollama["ollama Application\n(namespace: ollama)"]
             mon["monitoring Application\n(kube-prometheus-stack,\nnamespace: monitoring)"]
             ing["ingress-nginx Application\n(namespace: ingress-nginx)"]
+            chat["ollama-chat Application\n(git source, namespace: ollama-chat)"]
             dcgm["nvidia-dcgm-exporter\n(namespace: gpu-operator-resources)"]
             mlb["metallb-config\n(IPAddressPool, L2Advertisement)"]
             pvc["PVC: ollama\n(40Gi, microk8s-hostpath)"]
             monpvc["PVC: prometheus\n(10Gi, 15d retention)"]
+            chatpvc["PVC: ollama-chat-session\n(1Gi, microk8s-hostpath)"]
         end
         metallb["MetalLB\n(192.168.1.240-250)"]
         gpu["NVIDIA GTX 1060\n(driver 580.159.03, host mode)"]
@@ -35,20 +38,26 @@ flowchart TB
     root --> ollama
     root --> mon
     root --> ing
+    root --> chat
     root --> mlb
     ollama -- "GPU passthrough" --> gpu
     ollama -- "model storage" --> pvc
     mon -- "scrapes (ServiceMonitor)" --> dcgm
     dcgm -- "GPU telemetry" --> gpu
     mon -- "metrics storage" --> monpvc
+    chat -- "poll ~3min" --> chatrepo
+    chat -- "session storage" --> chatpvc
+    chat -- "in-cluster API call" --> ollama
     mlb --> metallb
     metallb -- "192.168.1.240" --> argocd
     metallb -- "192.168.1.241:11434" --> ollama
     metallb -- "192.168.1.242" --> mon
     metallb -- "192.168.1.243 (by hostname)" --> ing
+    ing -- "Host: ollama-chat.home" --> chat
     user -- "https" --> metallb
     user -- "HTTP API" --> metallb
     user -- "Grafana UI" --> metallb
+    user -- "chat UI (ollama-chat.home)" --> metallb
 ```
 
 ## What lives where
@@ -59,6 +68,7 @@ flowchart TB
 | microk8s + addons (dns, hostpath-storage, metallb, gpu) + ArgoCD install | `bootstrap/install-host.sh` | Idempotent script, source of truth for host-layer commands |
 | ArgoCD `root` Application | `bootstrap/root-app.yaml`, applied once manually | Bootstraps everything below it |
 | Workload apps (Ollama, monitoring, ingress-nginx), AppProject, MetalLB IP pool | `apps/**` in this repo | Fully Git-managed; ArgoCD syncs automatically |
+| `ollama-chat` app (Deployment/Service/Ingress/PVC, image build/publish) | `k8s/**` and `.github/workflows/**` in [`koydas/ollama-chat`](https://github.com/koydas/ollama-chat) | First non-Helm, git-source Application — this repo only holds `apps/ollama-chat/application.yaml` pointing at it; see [ADR-0015](./adr/0015-ollama-chat-git-source-application.md) |
 | Ollama model weights | PVC on host disk (`microk8s-hostpath`) | **Not** in Git — re-downloaded on a fresh PVC (see [runbook.md](./runbook.md)) |
 | Prometheus metrics (GPU history, etc.) | PVC on host disk (`microk8s-hostpath`, 15d retention) | **Not** in Git — lost if the PVC is deleted; see [ADR-0012](./adr/0012-monitoring-stack.md) |
 | ArgoCD admin password | Kubernetes Secret, regenerated per install | Not in Git; rotate after first login |
@@ -81,8 +91,8 @@ flowchart TB
 ## Ingress flow (host-routed apps)
 
 1. `ingress-nginx` (`apps/ingress-nginx/application.yaml`) is the one `IngressClass` for the cluster (`ingressClassResource.default: true`), reachable at a pinned MetalLB IP (`192.168.1.243`, see [ADR-0014](./adr/0014-ingress-nginx-controller.md)).
-2. A future HTTP app adds its own `Ingress` object (in its own `apps/<name>/` app) naming a hostname; no client-facing MetalLB IP of its own is needed.
-3. The operator's device resolves that hostname to `.243` (`/etc/hosts` entry or LAN DNS — no DNS server exists in this environment yet), and ingress-nginx routes by `Host` header to the right Service.
+2. A future HTTP app adds its own `Ingress` object naming a hostname; no client-facing MetalLB IP of its own is needed. `ollama-chat` (ADR-0015) is the first: its `Ingress` lives in its own repo's `k8s/` dir, not under `apps/` here, since it's a git-source Application rather than a Helm chart — see ADR-0015.
+3. The operator's device resolves that hostname (e.g. `ollama-chat.home`) to `.243` (`/etc/hosts` entry or LAN DNS — no DNS server exists in this environment yet), and ingress-nginx routes by `Host` header to the right Service.
 4. Still LAN-only: no public domain, no cert-manager/TLS — see [ADR-0002](./adr/0002-lan-only-exposure.md), amended by ADR-0014 only for the internal routing model, not the exposure boundary.
 
 ## GitOps sync flow (changing what's deployed)
