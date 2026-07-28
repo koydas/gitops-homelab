@@ -9,6 +9,7 @@ flowchart TB
     subgraph gh["GitHub"]
         repo["koydas/gitops-homelab (public)"]
         chatrepo["koydas/ollama-chat (public)"]
+        piperrepo["koydas/piper-tts-server (public)"]
     end
 
     subgraph host["Bare-metal host (Ubuntu 26.04, GTX 1060 6GB)"]
@@ -20,6 +21,8 @@ flowchart TB
             mon["monitoring Application\n(kube-prometheus-stack,\nnamespace: monitoring)"]
             ing["ingress-nginx Application\n(namespace: ingress-nginx)"]
             chat["ollama-chat Application\n(git source, namespace: ollama-chat)"]
+            whisper["whisper\n(raw manifests, namespace: whisper)"]
+            piper["piper Application\n(git source, namespace: piper)"]
             dcgm["nvidia-dcgm-exporter\n(namespace: gpu-operator-resources)"]
             mlb["metallb-config\n(IPAddressPool, L2Advertisement)"]
             pvc["PVC: ollama\n(40Gi, microk8s-hostpath)"]
@@ -39,6 +42,8 @@ flowchart TB
     root --> mon
     root --> ing
     root --> chat
+    root --> whisper
+    root --> piper
     root --> mlb
     ollama -- "GPU passthrough" --> gpu
     ollama -- "model storage" --> pvc
@@ -48,12 +53,17 @@ flowchart TB
     chat -- "poll ~3min" --> chatrepo
     chat -- "session storage" --> chatpvc
     chat -- "in-cluster API call" --> ollama
+    chat -- "in-cluster API call" --> whisper
+    chat -- "in-cluster API call" --> piper
+    piper -- "poll ~3min" --> piperrepo
     mlb --> metallb
     metallb -- "192.168.1.240" --> argocd
     metallb -- "192.168.1.241:11434" --> ollama
     metallb -- "192.168.1.242" --> mon
     metallb -- "192.168.1.243 (by hostname)" --> ing
     metallb -- "192.168.1.244" --> chat
+    metallb -- "192.168.1.245:9000" --> whisper
+    metallb -- "192.168.1.246:8000" --> piper
     ing -- "Host: ollama-chat.home" --> chat
     user -- "https" --> metallb
     user -- "HTTP API" --> metallb
@@ -70,6 +80,8 @@ flowchart TB
 | ArgoCD `root` Application | `bootstrap/root-app.yaml`, applied once manually | Bootstraps everything below it |
 | Workload apps (Ollama, monitoring, ingress-nginx), AppProject, MetalLB IP pool | `apps/**` in this repo | Fully Git-managed; ArgoCD syncs automatically |
 | `ollama-chat` app (Deployment/Service/Ingress/PVC, image build/publish) | `k8s/**` and `.github/workflows/**` in [`koydas/ollama-chat`](https://github.com/koydas/ollama-chat) | First non-Helm, git-source Application — this repo only holds `apps/ollama-chat/application.yaml` pointing at it; see [ADR-0015](./adr/0015-ollama-chat-git-source-application.md) |
+| `whisper` app (Deployment/Service, off-the-shelf image) | `apps/whisper/**` in this repo | Raw manifests, no `application.yaml` — picked up by `root`'s recursive directory sync, same pattern as `apps/metallb-config/`; see [ADR-0016](./adr/0016-onboard-whisper-piper-cpu-only.md) |
+| `piper` app (Deployment/Service/Dockerfile/CI, custom code) | `k8s/**` and `.github/workflows/**` in [`koydas/piper-tts-server`](https://github.com/koydas/piper-tts-server) | Git-source Application like `ollama-chat`; this repo only holds `apps/piper/application.yaml`; see [ADR-0016](./adr/0016-onboard-whisper-piper-cpu-only.md) |
 | Ollama model weights | PVC on host disk (`microk8s-hostpath`) | **Not** in Git — re-downloaded on a fresh PVC (see [runbook.md](./runbook.md)) |
 | Prometheus metrics (GPU history, etc.) | PVC on host disk (`microk8s-hostpath`, 15d retention) | **Not** in Git — lost if the PVC is deleted; see [ADR-0012](./adr/0012-monitoring-stack.md) |
 | ArgoCD admin password | Kubernetes Secret, regenerated per install | Not in Git; rotate after first login |
@@ -81,6 +93,22 @@ flowchart TB
 2. MetalLB (L2 mode) routes it to the `ollama` Service, which forwards to the `ollama` Deployment's single pod.
 3. The pod has `nvidia.com/gpu: 1` requested and `runtimeClassName: nvidia`, so inference runs on the GTX 1060 rather than falling back to CPU (see [ADR-0003](./adr/0003-ollama-in-cluster.md)).
 4. Model weights are read from the PVC (`/root/.ollama`), which persists across pod restarts.
+
+## Request flow (voice mode: STT/TTS)
+
+1. The browser records a message (or gets a reply to speak) and calls `ollama-chat`'s
+   Express backend at `/api/stt` or `/api/tts` (same MetalLB IP/Ingress as the chat UI
+   itself, `192.168.1.244` / `ollama-chat.home`).
+2. Express proxies the request in-cluster via Service DNS: `/api/stt` →
+   `whisper.whisper.svc.cluster.local:9000` (`onerahmet/openai-whisper-asr-webservice`,
+   `POST /asr`), `/api/tts` → `piper.piper.svc.cluster.local:8000` (the custom
+   `piper-tts-server`, `POST /tts`) — no Express-side body parsing, both are pure
+   byte-stream proxies, mirroring how it already talks to Ollama.
+3. Both Whisper and Piper run CPU-only (see [ADR-0016](./adr/0016-onboard-whisper-piper-cpu-only.md))
+   — the GTX 1060 stays dedicated to Ollama.
+4. Each also has its own LoadBalancer IP (`192.168.1.245` Whisper, `192.168.1.246` Piper) so
+   `ollama-chat`'s local Vite dev server can reach them directly, without the Express backend
+   running, the same way local dev already reaches Ollama at `192.168.1.241`.
 
 ## Monitoring flow (GPU metrics)
 
