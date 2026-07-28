@@ -53,11 +53,12 @@ flowchart TB
     metallb -- "192.168.1.241:11434" --> ollama
     metallb -- "192.168.1.242" --> mon
     metallb -- "192.168.1.243 (by hostname)" --> ing
+    metallb -- "192.168.1.244" --> chat
     ing -- "Host: ollama-chat.home" --> chat
     user -- "https" --> metallb
     user -- "HTTP API" --> metallb
     user -- "Grafana UI" --> metallb
-    user -- "chat UI (ollama-chat.home)" --> metallb
+    user -- "chat UI (ollama-chat.home or .244)" --> metallb
 ```
 
 ## What lives where
