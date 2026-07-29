@@ -23,6 +23,9 @@ spec:
             enabled: true
             type: nvidia
             number: 1
+          extraEnv:
+            - name: OLLAMA_KEEP_ALIVE
+              value: "30s"
           models:
             # Edit this list and commit to bump/add the served model version.
             pull:
