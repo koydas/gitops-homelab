@@ -15,18 +15,17 @@ spec:
       labels:
         app: whisper
     spec:
+      runtimeClassName: nvidia
       containers:
         - name: whisper
-          # CPU multi-arch tag, deliberately not a -gpu variant — see ADR-0016:
-          # the node's single GTX 1060 is already fully claimed by Ollama.
-          image: onerahmet/openai-whisper-asr-webservice:v1.9.1
+          image: onerahmet/openai-whisper-asr-webservice:v1.9.1-gpu
           env:
             - name: ASR_ENGINE
               value: faster_whisper
             - name: ASR_MODEL
               value: small
             - name: ASR_DEVICE
-              value: cpu
+              value: cuda
           ports:
             - containerPort: 9000
           resources:
@@ -36,3 +35,4 @@ spec:
             limits:
               cpu: "2"
               memory: 2Gi
+              nvidia.com/gpu: 1
