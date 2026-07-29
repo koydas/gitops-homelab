@@ -1,7 +1,8 @@
 # ADR-0016: Onboard Whisper (STT) and Piper (TTS), CPU-only, split raw-manifest vs git-source
 
 **Date:** 2026-07-28
-**Status:** Accepted
+**Status:** Partially superseded by [ADR-0017](./0017-whisper-gpu-with-keep-alive.md) —
+Whisper's CPU-only decision below no longer holds; Piper is unaffected and stays CPU-only.
 
 ---
 
@@ -21,6 +22,11 @@ exclusively-allocatable unit). A second pod requesting `nvidia.com/gpu` would si
 forever alongside `ollama`.
 
 ## Decision
+
+> **Update (2026-07-29):** confirmed usage is solo/sequential, never parallel — the
+> scheduling conflict assumed below doesn't occur in practice. Whisper has since moved to
+> GPU; see [ADR-0017](./0017-whisper-gpu-with-keep-alive.md). Piper's CPU-only decision is
+> unaffected — no GPU-accelerated code path exists for it upstream.
 
 Both services are deployed **CPU-only** — no `runtimeClassName: nvidia`, no
 `nvidia.com/gpu` resource request on either Deployment.
