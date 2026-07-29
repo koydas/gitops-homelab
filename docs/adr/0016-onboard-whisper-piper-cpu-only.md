@@ -1,7 +1,8 @@
 # ADR-0016: Onboard Whisper (STT) and Piper (TTS), CPU-only, split raw-manifest vs git-source
 
 **Date:** 2026-07-28
-**Status:** Accepted
+**Status:** Partially superseded by [ADR-0017](./0017-whisper-gpu-with-keep-alive.md) —
+Whisper's CPU-only decision below no longer holds; Piper is unaffected and stays CPU-only.
 
 ---
 
@@ -22,13 +23,22 @@ forever alongside `ollama`.
 
 ## Decision
 
+> **Update (2026-07-29):** confirmed usage is solo/sequential, never parallel — the
+> scheduling conflict assumed below doesn't occur in practice. Whisper has since moved to
+> GPU; see [ADR-0017](./0017-whisper-gpu-with-keep-alive.md). Piper's CPU-only decision is
+> unaffected — no GPU-accelerated code path exists for it upstream.
+
 Both services are deployed **CPU-only** — no `runtimeClassName: nvidia`, no
 `nvidia.com/gpu` resource request on either Deployment.
 
 - **Whisper** (`apps/whisper/`): the public, actively maintained
   `onerahmet/openai-whisper-asr-webservice:v1.9.1` image (confirmed present via
   `docker manifest inspect`, multi-arch, not the `-gpu` variant), `ASR_ENGINE=faster_whisper`,
-  `ASR_MODEL=small`, `ASR_DEVICE=cpu`. Deployed as **plain raw manifests** committed directly
+  `ASR_MODEL=small`, `ASR_DEVICE=cpu`.
+  **⚠ Superseded by [ADR-0017](./0017-whisper-gpu-with-keep-alive.md):** now the `-gpu` image
+  variant, `ASR_DEVICE=cuda`, `runtimeClassName: nvidia`, `nvidia.com/gpu: 1`. The raw-manifest
+  deployment pattern described below is still current — only the CPU-vs-GPU config changed.
+  Deployed as **plain raw manifests** committed directly
   in this repo (`namespace.yaml`, `deployment.yaml`, `service.yaml`, no `application.yaml`) —
   same pattern as `apps/metallb-config/`, picked up automatically by `root`'s recursive
   directory sync. There is no code here to own: it's an off-the-shelf image.
@@ -58,6 +68,11 @@ hardware or an untested sharing scheme this cluster has no precedent for. Piper 
 by upstream design anyway (targets Raspberry Pi-class hardware); Whisper's `faster_whisper`
 engine at `small` model size is workable on this node's 8 vCPU.
 
+**⚠ Reversed for Whisper by [ADR-0017](./0017-whisper-gpu-with-keep-alive.md):** the "no path
+to schedule" premise assumed Ollama and Whisper could run concurrently. Confirmed actual usage
+is solo/sequential, so that conflict doesn't occur — Whisper now runs GPU-accelerated. This
+rejection still stands for Piper (unchanged, still CPU-only).
+
 ### A Helm chart for either service
 Rejected for both: no well-known, actively-maintained Helm chart exists for either
 `openai-whisper-asr-webservice` or a plain-REST Piper wrapper — both ship as bare container
@@ -85,10 +100,10 @@ so raw manifests are the simpler, more direct fit there.
   established, just one more.
 
 **Negative:**
-- CPU-only Whisper at `small` model size trades some transcription latency/accuracy for
-  fitting the existing hardware — not benchmarked against alternative model sizes in this
-  session; if it proves too slow or inaccurate in practice, revisit the model size before
-  assuming new hardware is required.
+- ~~CPU-only Whisper at `small` model size trades some transcription latency/accuracy for
+  fitting the existing hardware~~ — **no longer applies to Whisper**, which moved to GPU per
+  [ADR-0017](./0017-whisper-gpu-with-keep-alive.md). Still applies to Piper (CPU-only,
+  unaffected) if its model/voice size ever needs revisiting.
 - Two more LoadBalancer IPs (`.245`, `.246`) consumed from the MetalLB pool for services that
   are, in production, only ever called from inside the cluster (by `ollama-chat`) — the
   LAN-reachable IP exists purely for local dev parity with Ollama's setup, not because

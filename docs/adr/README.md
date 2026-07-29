@@ -19,4 +19,5 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0013: Ollama serves requests sequentially, no `OLLAMA_NUM_PARALLEL`](./0013-ollama-sequential-requests.md)
 - [ADR-0014: Add ingress-nginx as a host-routed entry point, still LAN-only](./0014-ingress-nginx-controller.md)
 - [ADR-0015: Onboard `ollama-chat` as a Git-source Application, not a Helm chart](./0015-ollama-chat-git-source-application.md)
-- [ADR-0016: Onboard Whisper (STT) and Piper (TTS), CPU-only, split raw-manifest vs git-source](./0016-onboard-whisper-piper-cpu-only.md)
+- [ADR-0016: Onboard Whisper (STT) and Piper (TTS), CPU-only, split raw-manifest vs git-source](./0016-onboard-whisper-piper-cpu-only.md) — Whisper's CPU-only part superseded by ADR-0017
+- [ADR-0017: Whisper moves to GPU via time-slicing, Ollama gets `OLLAMA_KEEP_ALIVE=30s`](./0017-whisper-gpu-with-keep-alive.md)
