@@ -57,6 +57,14 @@ Applying `bootstrap/root-app.yaml` creates the `root` Application (app-of-apps),
 
 Do both *before* `root`'s first sync reaches `monitoring` if possible — if `root`'s sync gets stuck retrying on a missing `ServiceMonitor` CRD or a missing Grafana secret, force a refresh (`argocd.argoproj.io/refresh=hard` on `root`, not `monitoring`) once both are in place.
 
+**GPU time-slicing needs one manual, one-time step** that `root`'s own sync cannot do for itself (see [ADR-0017](./docs/adr/0017-whisper-gpu-with-keep-alive.md)): `apps/gpu-time-slicing/configmap.yaml` ships the time-slicing config, but the cluster's `ClusterPolicy` — a singleton created imperatively by the microk8s `nvidia` addon, not managed in this repo — has to be patched by hand to reference it, splitting the single GPU into 2 allocatable `nvidia.com/gpu` units so `ollama` and `whisper` can both schedule:
+```bash
+sudo microk8s kubectl get clusterpolicy   # confirm the object's name, expected: cluster-policy
+sudo microk8s kubectl patch clusterpolicy/cluster-policy --type merge \
+  -p '{"spec":{"devicePlugin":{"config":{"name":"time-slicing-config","default":"any"}}}}'
+```
+Re-apply this after any cluster rebuild — it does not survive re-running `install-host.sh`.
+
 **What does *not* come back automatically:**
 - Ollama model blobs — they re-download from scratch on first sync (currently ~9GB across 3 models); nothing in Git stores model weights.
 - The ArgoCD admin password — regenerated fresh on install; fetch it from `install-host.sh`'s output or `argocd-initial-admin-secret`.

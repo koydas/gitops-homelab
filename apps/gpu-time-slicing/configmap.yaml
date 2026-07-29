@@ -1,0 +1,18 @@
+# Referenced by the cluster's ClusterPolicy (spec.devicePlugin.config) so the single
+# physical GPU advertises 2 allocatable nvidia.com/gpu units instead of 1 — see ADR-0017.
+# The ClusterPolicy patch itself is a manual, one-time host step (README, "Recreate from
+# scratch"): ClusterPolicy is an imperatively-created singleton owned by the microk8s
+# `nvidia` addon, not adopted into Git here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: time-slicing-config
+  namespace: gpu-operator-resources
+data:
+  any: |-
+    version: v1
+    sharing:
+      timeSlicing:
+        resources:
+        - name: nvidia.com/gpu
+          replicas: 2
