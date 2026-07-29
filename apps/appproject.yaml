@@ -13,6 +13,7 @@ spec:
     - https://github.com/koydas/gitops-homelab.git
     - https://github.com/koydas/ollama-chat.git
     - https://github.com/koydas/piper-tts-server.git
+    - https://github.com/koydas/homelab-gateway.git
     - https://helm.otwld.com/
     - https://prometheus-community.github.io/helm-charts
     - https://kubernetes.github.io/ingress-nginx
@@ -28,6 +29,8 @@ spec:
     - namespace: whisper
       server: https://kubernetes.default.svc
     - namespace: piper
+      server: https://kubernetes.default.svc
+    - namespace: homelab-gateway
       server: https://kubernetes.default.svc
     # Add a line here for each new namespace as new workload apps are added.
   clusterResourceWhitelist:
