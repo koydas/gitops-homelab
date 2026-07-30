@@ -52,7 +52,10 @@ spec:
               - "qwen2.5-coder:7b-instruct-q4_0"
               # Vision model routed to by ollama-chat's VISION_MODEL
               # (src/lib/conversations.js) whenever a request carries images.
-              - "qwen2.5vl:3b"
+              # Was qwen2.5vl:3b; switched 2026-07-30 after it proved
+              # unreliable at recalling images across turns in a multi-image
+              # conversation -- see ollama-chat's ADR-0016.
+              - "llava:7b"
             run: []
   destination:
     server: https://kubernetes.default.svc
