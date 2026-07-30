@@ -24,3 +24,4 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0018: GHCR images pulled via public package visibility, no `imagePullSecret` in Git](./0018-ghcr-public-visibility-no-pull-secret.md)
 - [ADR-0019: Cap Ollama to one loaded model at a time (`OLLAMA_MAX_LOADED_MODELS=1`)](./0019-ollama-max-loaded-models-one.md)
 - [ADR-0020: Onboard `homelab-gateway` as a git-source Application](./0020-onboard-homelab-gateway.md)
+- [ADR-0021: Lower DCGM scrape interval from 30s to 10s](./0021-dcgm-scrape-interval-10s.md)
