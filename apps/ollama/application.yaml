@@ -26,6 +26,17 @@ spec:
           extraEnv:
             - name: OLLAMA_KEEP_ALIVE
               value: "30s"
+            # Forces one model resident at a time instead of Ollama trying
+            # to keep the previous model warm alongside a newly-requested
+            # one. On the GTX 1060's 6GB, loading qwen2.5vl:3b (vision)
+            # while llama3.1:8b-instruct-q4_0 (text) was still loaded blew
+            # past available VRAM (further squeezed by whisper's own ~1.3GB
+            # footprint) and crashed llama-server with a CUDA OOM -- see
+            # 2026-07-30 incident. Costs a few extra seconds of reload time
+            # any time a conversation switches between text and image
+            # messages, in exchange for not crashing.
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "1"
           models:
             # Edit this list and commit to bump/add the served model version.
             pull:
