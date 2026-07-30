@@ -23,8 +23,7 @@ level=WARN msg="runtime OOM detected; expiring loaded models to clear memory bef
 [GIN] 500 | 10.866092318s | POST "/api/chat"
 ```
 
-`llama3.1:8b-instruct-q4_0` was still resident (within the `OLLAMA_KEEP_ALIVE=30s` window from
-[ADR-0017](./0017-whisper-gpu-with-keep-alive.md)) when the vision model tried to load
+`llama3.1:8b-instruct-q4_0` was apparently still resident when the vision model tried to load
 alongside it. `nvidia-smi --query-compute-apps` at the time of investigation showed
 `whisper`'s pod permanently holding ~1.3-1.4GB of VRAM even while idle (loaded model, not
 actively transcribing) — confirming ADR-0017's own "Neutral" caveat that time-slicing fixes
@@ -40,12 +39,24 @@ than always unloading the old one first. That estimate did not account for enoug
 and the failure mode was not a clean "not enough memory, reject the request" — it was a hard
 process abort in the middle of image-encoding.
 
+**A second, pre-existing bug surfaced while fixing this**: `apps/ollama/application.yaml` had
+been setting `OLLAMA_KEEP_ALIVE=30s` under `ollama.extraEnv` since ADR-0017 — but
+`helm show values otwld/ollama --version 1.68.0` confirms `extraEnv` is a **chart-root** key,
+a sibling of `ollama:`, not nested inside it. Helm silently ignores unrecognized values keys,
+so this had no effect the entire time: `sudo microk8s kubectl get deploy -n ollama ollama -o
+jsonpath='{.metadata.generation}'` was still `4`, unchanged since the Deployment's original
+creation on 2026-07-23, and its live container env never contained `OLLAMA_KEEP_ALIVE` at all
+— Ollama had been running on the chart's actual default (5-minute keep-alive) this whole time,
+making the two-models-resident window even wider than ADR-0017 assumed. Fixed by moving
+`extraEnv` to the values root alongside `OLLAMA_MAX_LOADED_MODELS`.
+
 ---
 
 ## Decision
 
-Set `OLLAMA_MAX_LOADED_MODELS=1` in `apps/ollama/application.yaml`'s `ollama.extraEnv`. This
-forces Ollama to always fully unload the previous model before loading a different one,
+Set `OLLAMA_MAX_LOADED_MODELS=1` in `apps/ollama/application.yaml`'s (chart-root) `extraEnv`,
+alongside a corrected `OLLAMA_KEEP_ALIVE=30s` (moved from the wrong `ollama.extraEnv` nesting).
+This forces Ollama to always fully unload the previous model before loading a different one,
 instead of attempting to keep both resident.
 
 ---
