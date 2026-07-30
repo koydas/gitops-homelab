@@ -16,4 +16,9 @@ spec:
       app: nvidia-dcgm-exporter
   endpoints:
     - port: gpu-metrics
-      interval: 30s
+      # Lowered from 30s (2026-07-30): most inference calls on this box finish
+      # in under 30s, so the old interval could miss a short call's GPU
+      # utilization spike entirely. 10s still won't reliably catch calls
+      # under ~10s, but samples ~3x more often for a negligible storage cost
+      # at this cluster's scale. See the gpu-metrics-visibility skill.
+      interval: 10s
