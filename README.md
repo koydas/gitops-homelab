@@ -6,7 +6,9 @@ GitOps repo synced by ArgoCD running on a single-node bare-metal microk8s cluste
 
 ## Documentation
 
-- [docs/architecture.md](./docs/architecture.md) — components, data flow, what lives where
+- [docs/architecture.md](./docs/architecture.md) — components, what lives where, the GitOps sync mechanism
+- [docs/request-flows.md](./docs/request-flows.md) — how a request reaches a pod (Ollama, homelab-gateway, voice mode)
+- [docs/operations.md](./docs/operations.md) — GPU monitoring and ingress flows
 - [docs/runbook.md](./docs/runbook.md) — operational tasks and troubleshooting (real incidents, not hypothetical)
 - [docs/testing.md](./docs/testing.md) — verification checklist and the Postman collection
 - [docs/adr/](./docs/adr/README.md) — Architecture Decision Records: what was decided, alternatives considered, why
