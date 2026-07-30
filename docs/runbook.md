@@ -71,6 +71,15 @@ sudo microk8s kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-
 sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
 ```
 
+**Query homelab-gateway's per-call log** (see `homelab-gateway`'s [ADR-0001](https://github.com/koydas/homelab-gateway/blob/main/docs/adr/0001-mongodb-call-log.md)):
+```bash
+sudo microk8s kubectl exec -n homelab-gateway deploy/homelab-gateway-mongo -- mongosh --quiet --eval '
+db = db.getSiblingDB("homelab_gateway");
+db.call_log.find().sort({timestamp:-1}).limit(20)
+'
+```
+Only the last 30 days are kept (TTL index); filter with e.g. `{backend:"ollama", statusCode:{$gte:400}}` to find errors.
+
 **Rebuild this server from scratch:** see [README.md § Recreate from scratch](../README.md#recreate-from-scratch).
 
 ---
@@ -120,6 +129,15 @@ sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
 **Cause:** the `otwld/ollama-helm` chart does not pass the `--embeddings` flag by default; not something CI or `kubeconform` can catch since the manifest is schema-valid.
 **Fix:** not yet applied. To enable, add `--embeddings` to the container args via the Helm values (e.g. an `extraArgs` field, chart-version-dependent) and let ArgoCD redeploy.
 
+### A git-source app's pod runs the wrong image right after a code push (`homelab-gateway`, 2026-07-30)
+**Cause:** a code push to a git-source app's repo (e.g. `homelab-gateway`) triggers two commits in sequence: the push itself, then a follow-up `docker-publish.yml` commit that rewrites `k8s/deployment.yaml`'s image tag to the freshly built SHA (same pattern as `ollama-chat`'s ADR-0006). ArgoCD's automated poll-sync can land on the *first* commit before CI finishes and pushes the second — briefly deploying new manifests (e.g. a new env var) against the *old* image, which doesn't contain the corresponding code yet.
+**Symptom:** `kubectl get application <name> -o jsonpath='{.status.sync.revision}'` matches your code-push commit SHA, not the later `chore: deploy <sha>` one; the running pod's image tag (`kubectl get pod ... -o jsonpath='{.spec.containers[0].image}'`) still shows the previous build.
+**Fix:** wait for `gh run list --limit 1` to show the `docker-publish` workflow `completed`/`success`, then force a hard refresh so ArgoCD picks up the tag-rewrite commit instead of waiting for the next ~3min poll:
+```bash
+sudo microk8s kubectl -n argocd annotate application <name> argocd.argoproj.io/refresh=hard --overwrite
+```
+Don't trust the first post-push "Synced" status alone — cross-check the pod's actual image tag against the latest commit on `origin/main` before declaring a deploy done, same discipline as `ollama-chat`'s own `homelab-deploy` skill already applies.
+
 ---
 
 ## Symptom → Probable Cause
@@ -133,3 +151,4 @@ sudo microk8s kubectl -n ollama exec deploy/ollama -- ollama rm <tag>
 | 40Gi PVC filling up | Stale model tags not auto-pruned (`models.clean: false`) — see Common Tasks above to remove them manually |
 | `monitoring` Application shows `Healthy` but `OutOfSync` even right after a clean sync | Cosmetic, unrelated to the password issue below: the Grafana subchart's admin-password `Secret` re-renders slightly differently on each `helm template` diff pass. Doesn't affect the running pod once `grafana.persistence` is enabled (see below). |
 | A `monitoring` namespace pod is `Pending` or gets `OOMKilled`, especially while a larger Ollama model is loaded | Node only has 15Gi RAM total, shared between Ollama and the monitoring stack's fixed resource requests/limits ([ADR-0012](./adr/0012-monitoring-stack.md)) — check `free -h` on the host and `sudo microk8s kubectl top pods -A` before assuming a config bug |
+| A git-source app's pod is running right after a push but the new code doesn't seem to be there | ArgoCD synced the code-push commit before CI's follow-up image-tag-rewrite commit landed — see Incidents above. Check `gh run list` and the pod's actual image tag, then force a hard refresh |
