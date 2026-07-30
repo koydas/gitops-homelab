@@ -5,7 +5,7 @@ description: Scaffold a new Architecture Decision Record in this repo's docs/adr
 
 # New ADR for gitops-homelab
 
-This repo documents real decisions as numbered ADRs in `docs/adr/`, indexed in `docs/adr/README.md`. Format follows `koydas/autonomous-dev-loop`. There are 20 so far (as of 2026-07-30) — always check the current count rather than assuming a number.
+This repo documents real decisions as numbered ADRs in `docs/adr/`, indexed in `docs/adr/README.md`. Format follows `koydas/autonomous-dev-loop`. There are 21 so far (as of 2026-07-30) — always check the current count rather than assuming a number.
 
 ## When this is actually warranted
 
