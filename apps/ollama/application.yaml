@@ -32,6 +32,9 @@ spec:
               - "llama3.1:8b-instruct-q4_0"
               - "qwen2.5:0.5b"
               - "qwen2.5-coder:7b-instruct-q4_0"
+              # Vision model routed to by ollama-chat's VISION_MODEL
+              # (src/lib/conversations.js) whenever a request carries images.
+              - "qwen2.5vl:3b"
             run: []
   destination:
     server: https://kubernetes.default.svc

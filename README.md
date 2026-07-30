@@ -65,13 +65,71 @@ sudo microk8s kubectl patch clusterpolicy/cluster-policy --type merge \
 ```
 Re-apply this after any cluster rebuild — it does not survive re-running `install-host.sh`.
 
+**GHCR package visibility needs a manual, one-time check per package.** The three git-source
+Applications (`ollama-chat`, `homelab-gateway`, `piper`) pull images from `ghcr.io/koydas/*`,
+built by each repo's own `docker-publish.yml` on push to `main`. A freshly created GHCR
+package defaults to **private** regardless of the source repo being public (see `ollama-chat`
+[ADR-0006](https://github.com/koydas/ollama-chat/blob/main/docs/adr/0006-gitops-deployment-via-ghcr.md)),
+and none of this repo's Applications carry an `imagePullSecret` — a deliberate choice, see
+[ADR-0018](./docs/adr/0018-ghcr-public-visibility-no-pull-secret.md) for why, but it means a
+package flipping private (or a brand-new package created by a future app) breaks the pod with
+`ImagePullBackOff` until someone fixes visibility by hand. Check each package's visibility
+under its GitHub package settings
+(**Package settings → Danger Zone → Change visibility**) and set it to Public:
+- `ghcr.io/koydas/ollama-chat`
+- `ghcr.io/koydas/homelab-gateway`
+- `ghcr.io/koydas/piper-tts-server`
+
+You can check without logging in — a public package answers an anonymous pull:
+```bash
+for pkg in koydas/ollama-chat koydas/homelab-gateway koydas/piper-tts-server; do
+  token=$(curl -s "https://ghcr.io/token?scope=repository:$pkg:pull&service=ghcr.io" | python3 -c "import sys,json;print(json.load(sys.stdin).get('token',''))")
+  echo -n "$pkg: "
+  curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $token" "https://ghcr.io/v2/$pkg/tags/list"
+  # 200 = public, 401/403 = private -> needs an imagePullSecret this repo doesn't have, or fix visibility
+done
+```
+All three were confirmed public as of this writing; re-check after recreating any of these
+packages (e.g. deleting/recreating the GitHub repo) since that resets visibility to private.
+
 **What does *not* come back automatically:**
-- Ollama model blobs — they re-download from scratch on first sync (currently ~9GB across 3 models); nothing in Git stores model weights.
+- Ollama model blobs — they re-download from scratch on first sync (currently ~13GB across 4 models, including the `qwen2.5vl:3b` vision model `ollama-chat` routes image-carrying requests to); nothing in Git stores model weights.
 - The ArgoCD admin password — regenerated fresh on install; fetch it from `install-host.sh`'s output or `argocd-initial-admin-secret`.
 - Prometheus's metrics history and Grafana's own PVC — both start empty; GPU/cluster metrics history from before the rebuild is gone.
 - The `grafana-admin-credentials` Secret — must be recreated per the steps above; it is deliberately not chart-generated (see ADR-0012), so nothing will conjure it automatically.
 - The MetalLB range must still be manually reserved in the router's DHCP settings — the script does not, and cannot, touch your router.
 - Anything under "Host state" above that's specific to *this* box (GPU model, driver version) — adjust `install-host.sh` env vars / the GPU addon flags if the target hardware differs.
+
+## Manual post-install steps
+
+Quick-reference checklist of everything above that `root`'s automated sync cannot do for
+itself — do these before or immediately after applying `bootstrap/root-app.yaml` (full
+rationale for each is in "Recreate from scratch" above):
+
+1. **Reserve the MetalLB range in the router's DHCP settings** (`192.168.1.240-192.168.1.250`)
+   — router UI only, no command; see "Host state" above.
+2. **Create the Grafana admin credentials Secret:**
+   ```bash
+   sudo microk8s kubectl create namespace monitoring
+   sudo microk8s kubectl -n monitoring create secret generic grafana-admin-credentials \
+     --from-literal=admin-user=admin \
+     --from-literal=admin-password="$(python3 -c 'import secrets; print(secrets.token_urlsafe(30))')"
+   ```
+3. **Apply `kube-prometheus-stack`'s CRDs server-side:**
+   ```bash
+   curl -sL -o /tmp/kps.tgz "https://github.com/prometheus-community/helm-charts/releases/download/kube-prometheus-stack-87.19.1/kube-prometheus-stack-87.19.1.tgz"
+   tar xzf /tmp/kps.tgz -C /tmp kube-prometheus-stack/charts/crds/crds/
+   sudo microk8s kubectl apply --server-side --force-conflicts -f /tmp/kube-prometheus-stack/charts/crds/crds/
+   ```
+4. **Patch the GPU `ClusterPolicy` for time-slicing:**
+   ```bash
+   sudo microk8s kubectl get clusterpolicy   # confirm the object's name, expected: cluster-policy
+   sudo microk8s kubectl patch clusterpolicy/cluster-policy --type merge \
+     -p '{"spec":{"devicePlugin":{"config":{"name":"time-slicing-config","default":"any"}}}}'
+   ```
+5. **Verify GHCR package visibility** for `ollama-chat`, `homelab-gateway`, and `piper-tts-server`
+   — see the GHCR callout above; no command needed if all three are still public, otherwise
+   flip visibility in each package's GitHub settings.
 
 ## Structure
 
@@ -81,6 +139,11 @@ Re-apply this after any cluster rebuild — it does not survive re-running `inst
 - `apps/ollama/application.yaml` — Ollama deployment (Helm chart `otwld/ollama-helm`), project `homelab`. The served model is set in `spec.source.helm.valuesObject.ollama.models.pull` — edit and commit to bump the model version.
 - `apps/monitoring/` — Prometheus + Grafana (Helm chart `prometheus-community/kube-prometheus-stack`), project `homelab`. `application.yaml` is the chart Application; `dcgm-servicemonitor.yaml` and `dcgm-dashboard-configmap.yaml` are plain manifests (not chart-templated) that wire up GPU scraping and the Grafana dashboard. See [ADR-0012](./docs/adr/0012-monitoring-stack.md) — this one needs manual one-time bootstrap steps, see "Recreate from scratch" above.
 - `apps/metallb-config/` — `IPAddressPool` + `L2Advertisement`, Git-managed (the `metallb` addon still installs the MetalLB controller itself; these manifests take over ownership of the address pool it creates so the LAN IP range is changeable via a Git commit instead of only via `microk8s enable metallb:<range>` on the host). Names match the addon's originally-created objects so ArgoCD adopts them in place.
+- `apps/ollama-chat/application.yaml` — git-source Application (not a Helm chart) pointing at [`koydas/ollama-chat`](https://github.com/koydas/ollama-chat)'s `k8s/` directory; this repo only holds the pointer, the Deployment/Service/Ingress/PVC manifests live in that separate repo. See [ADR-0015](./docs/adr/0015-ollama-chat-git-source-application.md).
+- `apps/whisper/` — plain manifests (Deployment/Service, off-the-shelf `onerahmet/openai-whisper-asr-webservice` image), no `application.yaml` — picked up directly by `root`'s recursive sync. See [ADR-0016](./docs/adr/0016-onboard-whisper-piper-cpu-only.md).
+- `apps/piper/application.yaml` — git-source Application, same pattern as `ollama-chat`, pointing at the separate [`koydas/piper-tts-server`](https://github.com/koydas/piper-tts-server) repo's `k8s/` directory. See [ADR-0016](./docs/adr/0016-onboard-whisper-piper-cpu-only.md).
+- `apps/homelab-gateway/application.yaml` — git-source Application, same pattern again, pointing at the separate [`koydas/homelab-gateway`](https://github.com/koydas/homelab-gateway) repo's `k8s/` directory (single LAN entry point in front of whisper/piper/ollama).
+- `apps/gpu-time-slicing/configmap.yaml` — time-slicing config the `ClusterPolicy` is patched to reference (manual step, see "Recreate from scratch" above); lets `ollama` and `whisper` both schedule against the single GPU. See [ADR-0017](./docs/adr/0017-whisper-gpu-with-keep-alive.md).
 - `postman/ollama.postman_collection.json` — Postman collection for smoke-testing the Ollama API (`/api/tags`, `/api/generate`, `/api/chat`, `/api/embed`, a code-generation prompt against the coder model). Not synced by ArgoCD, just kept alongside the infra it tests. Import into Postman and set `base_url` to the Ollama Service's MetalLB IP if it ever changes.
 - `docs/` — architecture, runbook, testing checklist, and ADRs. See [Documentation](#documentation) above.
 
