@@ -48,7 +48,10 @@ spec:
             # Edit this list and commit to bump/add the served model version.
             pull:
               - "llama3.1:8b-instruct-q4_0"
-              - "qwen2.5:0.5b"
+              # qwen2.5:0.5b removed 2026-07-30: added in ADR-0004 to
+              # validate the models.pull flow, never actually consumed by
+              # an app -- only used ad hoc in the runbook's GPU smoke test,
+              # which now uses llama3.1:8b-instruct-q4_0 instead.
               - "qwen2.5-coder:7b-instruct-q4_0"
               # Vision model routed to by ollama-chat's VISION_MODEL
               # (src/lib/conversations.js) whenever a request carries images.

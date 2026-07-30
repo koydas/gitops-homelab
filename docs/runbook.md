@@ -30,9 +30,11 @@ sudo microk8s kubectl -n ollama get pods,pvc,svc
 
 **Confirm inference is actually running on the GPU (not falling back to CPU):**
 ```bash
-curl -s http://192.168.1.241:11434/api/generate -d '{"model":"qwen2.5:0.5b","prompt":"hi","stream":false}' &
+curl -s http://192.168.1.241:11434/api/generate -d '{"model":"llama3.1:8b-instruct-q4_0","prompt":"hi","stream":false}' &
 watch -n1 nvidia-smi   # VRAM usage and GPU-Util%% should spike during the request
 ```
+(Previously used `qwen2.5:0.5b` for a faster/lighter check — removed 2026-07-30 as an unused
+model; any installed tag works here, this one's just the one always present.)
 
 **A request feels stuck/slow:** expected if other requests are queued ahead of it — see [ADR-0013](./adr/0013-ollama-sequential-requests.md). Ollama serves one generation at a time on this GPU by design (no `OLLAMA_NUM_PARALLEL`); N simultaneous requests finish roughly N × (single-request time) apart, not all at once. Check for queued requests:
 ```bash
