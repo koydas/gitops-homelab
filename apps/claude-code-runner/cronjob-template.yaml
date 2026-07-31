@@ -3,11 +3,11 @@
 # automation defined yet — this just proves out the image, auth wiring, and invocation
 # pattern for whichever specific CI/code-review case comes up first.
 #
-# To run it once, ad hoc:
-#   sudo microk8s kubectl create job -n claude-code-runner \
-#     claude-run-$(date +%s) --from=cronjob/claude-code-runner
-# then, before that Job's pod starts (or by editing this file's `command` for a
-# committed, repeatable case), swap in the real prompt/allowed-tools for the task at hand.
+# To run it once, ad hoc, with a real prompt/tool list: see docs/runbook.md's
+# "Trigger a one-off Claude Code run" (or the claude-code-runner skill) — `create job
+# --from=cronjob/...` alone races the Job controller's near-instant pod creation, so the
+# env override has to be baked into the Job manifest before it's ever applied, not
+# patched in after.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -20,6 +20,7 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 0
+      ttlSecondsAfterFinished: 3600
       template:
         spec:
           restartPolicy: Never

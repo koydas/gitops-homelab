@@ -80,21 +80,47 @@ db.call_log.find().sort({timestamp:-1}).limit(20)
 ```
 Only the last 30 days are kept (TTL index); filter with e.g. `{backend:"ollama", statusCode:{$gte:400}}` to find errors.
 
-**Set up or rotate the Claude Code runner's token** (see [ADR-0022](./adr/0022-onboard-claude-code-runner.md)): generate a 1-year OAuth token with `claude setup-token` on any machine with a Claude Pro/Max/Team/Enterprise login, then store it out-of-band (**not** in Git):
+**Set up or rotate the Claude Code runner's token** (see [ADR-0022](./adr/0022-onboard-claude-code-runner.md)). Run both steps yourself, on your own machine, in your own terminal — not pasted through an AI chat session, since the result is a credential valid for a full year:
 ```bash
+# 1. Generate the token. Opens a browser OAuth flow; needs a Claude Pro/Max/Team/
+#    Enterprise login. Prints the token to your terminal — it is not saved anywhere.
+claude setup-token
+
+# 2. Store it out-of-band (not in Git). `read -s` keeps it out of shell history and
+#    off your screen as you paste it.
+read -s -p "Paste the token: " CCTOKEN && echo
 sudo microk8s kubectl create secret generic claude-code-oauth-token \
   -n claude-code-runner \
-  --from-literal=CLAUDE_CODE_OAUTH_TOKEN=<token> \
+  --from-literal=CLAUDE_CODE_OAUTH_TOKEN="$CCTOKEN" \
   --dry-run=client -o yaml | sudo microk8s kubectl apply -f -
+unset CCTOKEN
+```
+Verify it landed without printing the value:
+```bash
+sudo microk8s kubectl get secret claude-code-oauth-token -n claude-code-runner
 ```
 
-**Trigger a one-off Claude Code run:** the `claude-code-runner` `CronJob` is a suspended template, not a live schedule. Spin one off from it, then swap in the real prompt/tools before its pod starts:
+**Trigger a one-off Claude Code run:** the `claude-code-runner` `CronJob` is a suspended template, not a live schedule. `create job --from=cronjob/...` alone races the Job controller (it creates the pod almost immediately), so bake the real prompt/tools into the manifest *before* applying it rather than editing the Job after:
 ```bash
-sudo microk8s kubectl create job -n claude-code-runner claude-run-$(date +%s) --from=cronjob/claude-code-runner
-# edit CLAUDE_PROMPT / CLAUDE_ALLOWED_TOOLS on the resulting Job's pod template if the
-# defaults (an inert placeholder, Read-only) aren't what this run needs
-sudo microk8s kubectl -n claude-code-runner logs -f job/<job-name>
+sudo microk8s kubectl create job -n claude-code-runner "claude-run-$(date +%s)" \
+  --from=cronjob/claude-code-runner --dry-run=client -o yaml > /tmp/claude-run-job.yaml
+
+python3 - <<'EOF'
+import yaml
+path = "/tmp/claude-run-job.yaml"
+job = yaml.safe_load(open(path))
+env = job["spec"]["template"]["spec"]["containers"][0]["env"]
+overrides = {"CLAUDE_PROMPT": "the real prompt here", "CLAUDE_ALLOWED_TOOLS": "Read,Bash"}
+for e in env:
+    if e["name"] in overrides:
+        e["value"] = overrides[e["name"]]
+yaml.dump(job, open(path, "w"))
+EOF
+
+sudo microk8s kubectl apply -f /tmp/claude-run-job.yaml
+sudo microk8s kubectl -n claude-code-runner logs -f job/<job-name-from-above>
 ```
+Finished Jobs self-delete after an hour (`ttlSecondsAfterFinished: 3600`) — no manual cleanup needed for routine runs.
 
 **Rebuild this server from scratch:** see [README.md § Recreate from scratch](../README.md#recreate-from-scratch).
 
