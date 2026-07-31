@@ -32,6 +32,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: homelab-gateway
       server: https://kubernetes.default.svc
+    - namespace: claude-code-runner
+      server: https://kubernetes.default.svc
     # Add a line here for each new namespace as new workload apps are added.
   clusterResourceWhitelist:
     # Required by kube-prometheus-stack: CRDs (ServiceMonitor, Prometheus, etc.),

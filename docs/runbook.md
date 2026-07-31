@@ -80,6 +80,22 @@ db.call_log.find().sort({timestamp:-1}).limit(20)
 ```
 Only the last 30 days are kept (TTL index); filter with e.g. `{backend:"ollama", statusCode:{$gte:400}}` to find errors.
 
+**Set up or rotate the Claude Code runner's token** (see [ADR-0022](./adr/0022-onboard-claude-code-runner.md)): generate a 1-year OAuth token with `claude setup-token` on any machine with a Claude Pro/Max/Team/Enterprise login, then store it out-of-band (**not** in Git):
+```bash
+sudo microk8s kubectl create secret generic claude-code-oauth-token \
+  -n claude-code-runner \
+  --from-literal=CLAUDE_CODE_OAUTH_TOKEN=<token> \
+  --dry-run=client -o yaml | sudo microk8s kubectl apply -f -
+```
+
+**Trigger a one-off Claude Code run:** the `claude-code-runner` `CronJob` is a suspended template, not a live schedule. Spin one off from it, then swap in the real prompt/tools before its pod starts:
+```bash
+sudo microk8s kubectl create job -n claude-code-runner claude-run-$(date +%s) --from=cronjob/claude-code-runner
+# edit CLAUDE_PROMPT / CLAUDE_ALLOWED_TOOLS on the resulting Job's pod template if the
+# defaults (an inert placeholder, Read-only) aren't what this run needs
+sudo microk8s kubectl -n claude-code-runner logs -f job/<job-name>
+```
+
 **Rebuild this server from scratch:** see [README.md § Recreate from scratch](../README.md#recreate-from-scratch).
 
 ---

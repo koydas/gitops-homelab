@@ -1,0 +1,52 @@
+# Reusable template, not a live schedule: `suspend: true` and an inert schedule mean
+# ArgoCD keeps this reconciled but it never fires on its own. There's no concrete
+# automation defined yet — this just proves out the image, auth wiring, and invocation
+# pattern for whichever specific CI/code-review case comes up first.
+#
+# To run it once, ad hoc:
+#   sudo microk8s kubectl create job -n claude-code-runner \
+#     claude-run-$(date +%s) --from=cronjob/claude-code-runner
+# then, before that Job's pod starts (or by editing this file's `command` for a
+# committed, repeatable case), swap in the real prompt/allowed-tools for the task at hand.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: claude-code-runner
+  namespace: claude-code-runner
+spec:
+  schedule: "0 0 * * 0"
+  suspend: true
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: claude-code-runner
+              image: node:22-slim
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  npm install -g @anthropic-ai/claude-code
+                  claude -p "${CLAUDE_PROMPT}" --output-format json --allowedTools "${CLAUDE_ALLOWED_TOOLS}"
+              env:
+                - name: CLAUDE_CODE_OAUTH_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: claude-code-oauth-token
+                      key: CLAUDE_CODE_OAUTH_TOKEN
+                - name: CLAUDE_PROMPT
+                  value: "echo: no task configured yet"
+                - name: CLAUDE_ALLOWED_TOOLS
+                  value: "Read"
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 512Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
