@@ -52,9 +52,17 @@ change needed: Deployment, Service and Ingress are all namespace-scoped.
 
 `jo-bines-adventures`'s own repo carries a `docker-publish.yml` workflow
 (`web/` as build context and working directory) that builds the image,
-pushes it to `ghcr.io/koydas/jo-bines-adventures`, and — after the fast
-Playwright smoke suite passes — commits the built tag back into
+pushes it to `ghcr.io/koydas/jo-bines-adventures`, and — after a
+typecheck+build gate — commits the built tag back into
 `web/k8s/deployment.yaml`; that commit is what this Application syncs on.
+The gate is `npm run build`, not the repo's Playwright suites: as of
+2026-08-14 `smoke-tests.yml`/`e2e-tests.yml` fail on every run, in CI only
+(`vite preview` never answers within the 30s `config.webServer` timeout on
+a GitHub-hosted runner, though it answers in ~3s locally), reproducible on
+commits from before this ADR too. Gating the deploy on a suite that has
+never once passed would permanently block it for a pre-existing, unrelated
+flake; the two Playwright workflows still run on every push as a
+non-blocking signal in the meantime.
 Per [ADR-0018](./0018-ghcr-public-visibility-no-pull-secret.md), the GHCR
 package needs to be set to public visibility by hand after the first push
 (no `imagePullSecret` is carried in the Deployment), same one-time follow-up
