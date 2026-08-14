@@ -27,3 +27,4 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0021: Lower DCGM scrape interval from 30s to 10s](./0021-dcgm-scrape-interval-10s.md)
 - [ADR-0022: Onboard `claude-code-runner` as a suspended CronJob template](./0022-onboard-claude-code-runner.md)
 - [ADR-0023: Onboard `healing-simulator` as a git-source Application](./0023-onboard-healing-simulator.md)
+- [ADR-0024: Onboard `jo-bines-adventures` as a git-source Application](./0024-onboard-jo-bines-adventures.md)
