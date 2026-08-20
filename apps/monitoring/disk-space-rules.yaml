@@ -1,0 +1,51 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: disk-space
+  namespace: monitoring
+  labels:
+    # kube-prometheus-stack's Prometheus only picks up PrometheusRules matching
+    # its own release selector by default (same reason the dcgm ServiceMonitor
+    # needed an explicit namespace/label match) — this label is required for
+    # this rule to actually be loaded.
+    release: monitoring
+  annotations:
+    # Applied after the monitoring Application (wave 0) so the PrometheusRule
+    # CRD already exists in the cluster, same pattern as the dcgm ServiceMonitor.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  groups:
+    - name: disk-space
+      rules:
+        # Root disk hit 97% full on 2026-08-19 and caused a cascading outage
+        # (see docs/adr/0025-disk-space-auto-extend.md and .ai-reports). A
+        # host-level systemd timer (auto-extend-root.timer, not GitOps-managed —
+        # same pattern as ADR-0017's GPU time-slicing patch) now auto-extends
+        # the root LV from the volume group's free space whenever usage crosses
+        # 80%, before it becomes a problem.
+        #
+        # These alerts are a *backstop*, not the primary defense: they should
+        # essentially never fire under normal operation, since auto-extend acts
+        # first. If one does fire, it means auto-extend either isn't running or
+        # has run out of free VG space to extend into — i.e. real, manual
+        # intervention (add storage, prune data) is now needed.
+        - alert: RootDiskSpaceWarning
+          expr: |
+            (1 - node_filesystem_avail_bytes{mountpoint="/", fstype!="rootfs"}
+               / node_filesystem_size_bytes{mountpoint="/", fstype!="rootfs"}) * 100 > 85
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Root disk on {{ $labels.instance }} is above 85%"
+            description: "Root filesystem usage is {{ $value | printf \"%.1f\" }}%. auto-extend-root.timer should have already acted at 80% — check `journalctl -t auto-extend-root` and `vgs ubuntu-vg` for remaining free space."
+        - alert: RootDiskSpaceCritical
+          expr: |
+            (1 - node_filesystem_avail_bytes{mountpoint="/", fstype!="rootfs"}
+               / node_filesystem_size_bytes{mountpoint="/", fstype!="rootfs"}) * 100 > 92
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Root disk on {{ $labels.instance }} is above 92% — auto-extend has not kept up"
+            description: "Root filesystem usage is {{ $value | printf \"%.1f\" }}%. This means the volume group is very likely out of free space to auto-extend into. Manual intervention needed: add storage, or prune data (unused Ollama models, old container images, Prometheus retention)."

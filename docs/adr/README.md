@@ -28,3 +28,4 @@ Architecture Decision Records for `gitops-homelab`. Format follows [koydas/auton
 - [ADR-0022: Onboard `claude-code-runner` as a suspended CronJob template](./0022-onboard-claude-code-runner.md)
 - [ADR-0023: Onboard `healing-simulator` as a git-source Application](./0023-onboard-healing-simulator.md)
 - [ADR-0024: Onboard `jo-bines-adventures` as a git-source Application](./0024-onboard-jo-bines-adventures.md)
+- [ADR-0025: Host-level auto-extend for root disk, with a Prometheus backstop alert](./0025-disk-space-auto-extend.md)
