@@ -31,8 +31,15 @@ spec:
           resources:
             requests:
               cpu: 500m
-              memory: 1Gi
+              # 1.5Gi (was 1Gi): confirmed via Prometheus (container_memory_working_set_bytes)
+              # that faster_whisper/small on CUDA sits at 1.59-1.82Gi at peak across dozens of
+              # pod incarnations -- the old 1Gi request understated real steady-state usage.
+              memory: 1.5Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              # 3Gi (was 2Gi): the 2Gi limit left ~200-400Mi of headroom above observed peaks,
+              # not enough -- confirmed multiple pods with Last State: OOMKilled (kube_pod_container_status_last_terminated_reason)
+              # over the 2026-08-20 disk-space incident's 7-day window. Same class of issue as
+              # Grafana's OOM fix in ADR-0012 (limit sized off assumption, not measured usage).
+              memory: 3Gi
               nvidia.com/gpu: 1
