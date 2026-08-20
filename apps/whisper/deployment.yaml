@@ -7,6 +7,15 @@ metadata:
     app: whisper
 spec:
   replicas: 1
+  # RollingUpdate (the default) tries to surge a second pod before killing the
+  # old one -- deadlocks forever here: only 2 nvidia.com/gpu units exist total
+  # (ADR-0017 time-slicing), ollama holds one, and the old whisper pod holds
+  # the other, leaving none for a surged replacement (`FailedScheduling:
+  # Insufficient nvidia.com/gpu`). Hit on 2026-08-20 rolling out the OOM
+  # memory-limit fix. Recreate kills the old pod first, freeing its GPU unit
+  # before the new one is scheduled.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: whisper
