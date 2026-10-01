@@ -2,7 +2,44 @@
 
 [![validate](https://github.com/koydas/gitops-homelab/actions/workflows/validate.yml/badge.svg)](https://github.com/koydas/gitops-homelab/actions/workflows/validate.yml)
 
-GitOps repo synced by ArgoCD running on a single-node bare-metal microk8s cluster.
+**A self-hosted AI stack — chat, code, vision, speech-to-text, text-to-speech — on one 6 GB GTX 1060, deployed only through `git push`.**
+
+Single-node bare-metal microk8s, ArgoCD app-of-apps, every manifest validated in CI before ArgoCD sees it. Built to be operated, not demoed: every decision is an ADR, every outage is in the runbook with its root cause.
+
+| | |
+|---|---|
+| **One GPU, shared** | NVIDIA time-slicing splits the 1060 into 2 schedulable units: Ollama (`llama3.1:8b`, `qwen2.5-coder:7b`, `llava:7b`, all Q4_0) and Whisper STT. Piper TTS on CPU. |
+| **Git is the only deploy path** | `root` app-of-apps auto-discovers `apps/`; three services are git-source Applications pointing at their own repos and GHCR images. |
+| **Decided in writing** | [25 ADRs](./docs/adr/README.md) — context, rejected alternatives, consequences |
+| **Incidents, not hypotheticals** | [11 real incidents](./docs/runbook.md#incidents-hit-while-building-this) with symptom, root cause and fix, plus a symptom → cause lookup table |
+| **Rebuildable** | Bare Ubuntu + NVIDIA driver → `install-host.sh` → one `kubectl apply`, plus 5 documented one-time steps ([below](#manual-post-install-steps)) |
+
+```mermaid
+flowchart LR
+    dev["git push"] --> gh["GitHub<br/>(CI: yamllint + kubeconform)"]
+    gh -->|"poll ~3 min"| argo["ArgoCD<br/>app-of-apps"]
+    argo --> apps["ollama · whisper · piper<br/>homelab-gateway · ollama-chat<br/>monitoring · metallb · ingress"]
+    user["LAN client / ollama-chat"] --> gw["homelab-gateway<br/>content-based routing"]
+    gw --> ollama["Ollama<br/>GPU unit 1"]
+    gw --> whisper["Whisper<br/>GPU unit 2"]
+    gw --> piper["Piper<br/>CPU"]
+```
+
+Full component diagram: [docs/architecture.md](./docs/architecture.md).
+
+## Fitting it in 6 GB
+
+What it actually took, each step forced by a constraint or an incident:
+
+| Decision | Why | ADR |
+|---|---|---|
+| Q4_0 only, no Q5_K_M for 7–8B models | Benchmarked: Q5_K_M ran **38 % slower** (16.5 vs 26.6 tok/s) — the Pascal card goes memory-bandwidth-bound — and its generated code failed the same tests as Q4, plus a missing method | [0011](./docs/adr/0011-ollama-q4-quantization.md) |
+| Sequential requests, no `OLLAMA_NUM_PARALLEL` | Load-tested 1/2/5 concurrent requests against DCGM metrics: one slot avoids VRAM contention; queueing (2m26s for the 5th of 5) is acceptable for a single operator | [0013](./docs/adr/0013-ollama-sequential-requests.md) |
+| Whisper on GPU via time-slicing (2 units), Ollama keep-alive 30 s | Two Deployments, one physical GPU | [0017](./docs/adr/0017-whisper-gpu-with-keep-alive.md) |
+| `OLLAMA_MAX_LOADED_MODELS=1` | CUDA OOM on 2026-07-30: vision model loaded while the 8B text model was still resident, on top of Whisper's ~1.3 GB | [0019](./docs/adr/0019-ollama-max-loaded-models-one.md) |
+| Fix `extraEnv` nesting | Same investigation found the keep-alive setting had been **silently ignored for a week**: misplaced under `ollama.extraEnv`, and Helm drops unknown keys without error | [0019](./docs/adr/0019-ollama-max-loaded-models-one.md) |
+| Whisper `strategy: Recreate` | A rolling update needs a third GPU unit that doesn't exist — the new pod waits forever for the old one's slot | [`apps/whisper/deployment.yaml`](./apps/whisper/deployment.yaml) |
+| Root-disk auto-extend + Prometheus backstop alert | Model blobs and images fill the root LV | [0025](./docs/adr/0025-disk-space-auto-extend.md) |
 
 ## Documentation
 
