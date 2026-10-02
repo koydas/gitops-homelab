@@ -180,6 +180,16 @@ sudo microk8s kubectl -n argocd annotate application <name> argocd.argoproj.io/r
 ```
 Don't trust the first post-push "Synced" status alone — cross-check the pod's actual image tag against the latest commit on `origin/main` before declaring a deploy done, same discipline as `ollama-chat`'s own `homelab-deploy` skill already applies.
 
+### An image request returns `500` after ~11s: `cudaMalloc failed: out of memory`, then `llama-server terminated` (2026-07-30)
+**Cause:** in `ollama-chat`, a text message loaded `llama3.1:8b-instruct-q4_0`, then a photo routed to `qwen2.5vl:3b`. With no `OLLAMA_MAX_LOADED_MODELS` set, Ollama tried to keep both models resident on the 6 GB card, on top of `whisper`'s idle ~1.3–1.4 GB. The second load hit `cudaMalloc failed: out of memory` and the runner aborted (`signal: aborted (core dumped)`) instead of rejecting the request cleanly. GPU time-slicing (ADR-0017) shares scheduling, not VRAM.
+**Symptom:** `sudo microk8s kubectl logs -n ollama deploy/ollama` shows `ggml_backend_cuda_buffer_type_alloc_buffer: ... cudaMalloc failed: out of memory`, `llama-server terminated`, then `[GIN] 500 | ~10s | POST "/api/chat"`.
+**Fix:** `OLLAMA_MAX_LOADED_MODELS=1` in the chart-root `extraEnv` of `apps/ollama/application.yaml`, so Ollama unloads the previous model before loading another ([ADR-0019](./adr/0019-ollama-max-loaded-models-one.md)). Check with `nvidia-smi --query-compute-apps=pid,used_memory --format=csv` that only one Ollama runner is resident.
+
+### A Helm value in an Application never reaches the pod, and nothing reports an error (`OLLAMA_KEEP_ALIVE`, found 2026-07-30)
+**Cause:** `OLLAMA_KEEP_ALIVE=30s` had been added the day before under `ollama.extraEnv`, but in the `otwld/ollama` chart `extraEnv` is a **chart-root** key (`helm show values otwld/ollama --version 1.68.0`). Helm ignores unknown values keys without error, and the manifest is schema-valid, so neither CI (`kubeconform`) nor ArgoCD flagged it. Ollama kept running on the chart's 5-minute default keep-alive.
+**Symptom:** the Application is `Synced`, but `sudo microk8s kubectl get deploy -n ollama ollama -o jsonpath='{.metadata.generation}'` doesn't change after the commit (it was still `4`), and the container env (`kubectl get deploy -n ollama ollama -o jsonpath='{.spec.template.spec.containers[0].env}'`) lacks the variable.
+**Fix:** moved `extraEnv` to the values root ([ADR-0019](./adr/0019-ollama-max-loaded-models-one.md)). After any Helm-values change, confirm `metadata.generation` moved and the live env contains the new value before calling it deployed.
+
 ---
 
 ## Symptom → Probable Cause
@@ -194,3 +204,5 @@ Don't trust the first post-push "Synced" status alone — cross-check the pod's 
 | `monitoring` Application shows `Healthy` but `OutOfSync` even right after a clean sync | Cosmetic, unrelated to the password issue below: the Grafana subchart's admin-password `Secret` re-renders slightly differently on each `helm template` diff pass. Doesn't affect the running pod once `grafana.persistence` is enabled (see below). |
 | A `monitoring` namespace pod is `Pending` or gets `OOMKilled`, especially while a larger Ollama model is loaded | Node only has 15Gi RAM total, shared between Ollama and the monitoring stack's fixed resource requests/limits ([ADR-0012](./adr/0012-monitoring-stack.md)) — check `free -h` on the host and `sudo microk8s kubectl top pods -A` before assuming a config bug |
 | A git-source app's pod is running right after a push but the new code doesn't seem to be there | ArgoCD synced the code-push commit before CI's follow-up image-tag-rewrite commit landed — see Incidents above. Check `gh run list` and the pod's actual image tag, then force a hard refresh |
+| `ollama-chat` returns `500` on an image right after a text message (or vice versa) | Two Ollama models resident at once on the 6 GB card → CUDA OOM and runner abort. Check `OLLAMA_MAX_LOADED_MODELS=1` is in the live env ([ADR-0019](./adr/0019-ollama-max-loaded-models-one.md)) — see Incidents above |
+| A Helm value change is `Synced` but has no effect | The key is nested at the wrong level and Helm ignored it silently. Check that the Deployment's `metadata.generation` moved and the live env contains the value — see Incidents above |
