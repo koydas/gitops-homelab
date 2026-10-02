@@ -11,7 +11,7 @@ Single-node bare-metal microk8s, ArgoCD app-of-apps, every manifest in this repo
 | **One GPU, shared** | NVIDIA time-slicing splits the 1060 into 2 schedulable units: Ollama (`llama3.1:8b`, `qwen2.5-coder:7b`, `llava:7b`; text and code models pinned to Q4_0) and Whisper STT. Piper TTS on CPU. |
 | **Git is the only deploy path** | `root` app-of-apps auto-discovers `apps/`; five services are git-source Applications pointing at their own repos. |
 | **Decided in writing** | [25 ADRs](./docs/adr/README.md) — context, rejected alternatives, consequences |
-| **Incidents, not hypotheticals** | [11 real incidents](./docs/runbook.md#incidents-hit-while-building-this) with symptom, root cause and fix, plus a symptom → cause lookup table |
+| **Incidents, not hypotheticals** | [13 real incidents](./docs/runbook.md#incidents-hit-while-building-this) with symptom, root cause and fix, plus a symptom → cause lookup table |
 | **Rebuildable** | Bare Ubuntu + NVIDIA driver → `install-host.sh` → one `kubectl apply`, plus 5 documented one-time steps ([below](#manual-post-install-steps)) |
 
 ```mermaid
